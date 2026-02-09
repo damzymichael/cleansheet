@@ -127,3 +127,19 @@
         @apply font-sans;
     }
 }
+
+/* Autofill input styling */
+input:-webkit-autofill,
+input:-webkit-autofill:hover,
+input:-webkit-autofill:focus,
+input:-webkit-autofill:active {
+    -webkit-box-shadow: 0 0 0 30px var(--background) inset !important;
+    -webkit-text-fill-color: var(--foreground) !important;
+    caret-color: var(--foreground) !important;
+}
+
+/* For the transition delay when autofill happens */
+input:-webkit-autofill {
+    -webkit-transition-delay: 99999s;
+    transition-delay: 99999s;
+}
