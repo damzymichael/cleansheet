@@ -90,3 +90,19 @@ The backend provides a self-documenting API built with OpenAPI standards. Once t
 | `npm run dev` | Starts the development environment |
 | `npx drizzle-kit studio` | Opens a GUI to view/edit your SQLite database |
 | `npm run build` | Compiles the project for production |
+
+
+sequenceDiagram
+    participant User as User/Browser
+    participant API as Backend API
+    participant DB as Database
+
+    User->>API: Hits /signup page
+    API->>DB: Query: "SELECT * FROM users WHERE role = 'owner' LIMIT 1"
+    DB-->>API: Result (User found or null)
+    
+    alt Owner exists
+        API-->>User: Redirect to /login
+    else No owner exists
+        API-->>User: Render /signup page
+    end
