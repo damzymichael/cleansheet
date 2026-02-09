@@ -92,6 +92,7 @@ The backend provides a self-documenting API built with OpenAPI standards. Once t
 | `npm run build` | Compiles the project for production |
 
 
+```mermaid
 sequenceDiagram
     participant User as User/Browser
     participant API as Backend API
@@ -106,3 +107,4 @@ sequenceDiagram
     else No owner exists
         API-->>User: Render /signup page
     end
+```
