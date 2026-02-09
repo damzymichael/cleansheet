@@ -1,7 +1,6 @@
 "use client";
 
 import React from "react";
-
 import { Link, useLocation } from "react-router-dom";
 import { Home, FileText, Shirt, Users, Shield, Menu, X } from "lucide-react";
 import { useState } from "react";
@@ -50,7 +49,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                                         isActive && "bg-sidebar-primary text-sidebar-primary-foreground",
                                     )}
                                 >
-                                    <Icon className="w-5 h-5 flex-shrink-0" />
+                                    <Icon className="w-5 h-5 shrink-0" />
                                     {sidebarOpen && <span>{item.label}</span>}
                                 </Button>
                             </Link>
