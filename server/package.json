@@ -3,6 +3,8 @@
     "type": "module",
     "version": "1.0.0",
     "license": "MIT",
+    "main": "src/app.ts",
+    "types": "src/app.ts",
     "scripts": {
         "dev": "tsx watch src/index.ts",
         "start": "node ./dist/src/index.js",
