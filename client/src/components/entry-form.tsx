@@ -1,5 +1,3 @@
-"use client";
-
 import { useState, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -74,7 +72,6 @@ export function EntryForm({ onSubmit, onCancel }: { onSubmit: (data: any) => voi
             price: parseFloat(calculateTotalPrice().toString()),
         });
     };
-
     return (
         <div className="space-y-6">
             {/* Customer Selection */}
@@ -139,7 +136,7 @@ export function EntryForm({ onSubmit, onCancel }: { onSubmit: (data: any) => voi
                                         {item.quantity}x {item.clothName}
                                     </span>
                                     <div className="flex items-center gap-2">
-                                        <span className="text-sm font-medium">₹{item.price}</span>
+                                        <span className="text-sm font-medium">₦{item.price}</span>
                                         <Button variant="ghost" size="icon" onClick={() => handleRemoveItem(idx)}>
                                             <X className="w-4 h-4" />
                                         </Button>
@@ -149,15 +146,20 @@ export function EntryForm({ onSubmit, onCancel }: { onSubmit: (data: any) => voi
                         </div>
                     )}
 
-                    <div className="flex gap-2">
-                        <div className="flex-1">
+                    <div className="flex flex-col sm:flex-row gap-2">
+                        <div className="flex-1 min-w-0">
                             <Popover open={clothOpen} onOpenChange={setClothOpen}>
                                 <PopoverTrigger>
-                                    <Button variant="outline" className="w-full justify-start bg-transparent">
-                                        {selectedCloth ? selectedCloth.name : "Select cloth type..."}
+                                    <Button
+                                        variant="outline"
+                                        className="w-full justify-start bg-transparent overflow-hidden"
+                                    >
+                                        <span className="truncate">
+                                            {selectedCloth ? selectedCloth.name : "Select cloth type..."}
+                                        </span>
                                     </Button>
                                 </PopoverTrigger>
-                                <PopoverContent className="w-full p-0" align="start">
+                                <PopoverContent className="w-(--radix-popover-trigger-width) p-0" align="start">
                                     <Command>
                                         <CommandInput placeholder="Search clothes..." />
                                         <CommandList>
@@ -172,7 +174,7 @@ export function EntryForm({ onSubmit, onCancel }: { onSubmit: (data: any) => voi
                                                             setClothOpen(false);
                                                         }}
                                                     >
-                                                        {cloth.name} (₹{cloth.price})
+                                                        {cloth.name} (₦{cloth.price})
                                                     </CommandItem>
                                                 ))}
                                             </CommandGroup>
@@ -181,17 +183,19 @@ export function EntryForm({ onSubmit, onCancel }: { onSubmit: (data: any) => voi
                                 </PopoverContent>
                             </Popover>
                         </div>
-                        <Input
-                            type="number"
-                            placeholder="Qty"
-                            value={quantity}
-                            onChange={e => setQuantity(e.target.value)}
-                            className="w-20"
-                            min="1"
-                        />
-                        <Button onClick={handleAddItem} size="icon">
-                            <Plus className="w-4 h-4" />
-                        </Button>
+                        <div className="flex gap-2">
+                            <Input
+                                type="number"
+                                placeholder="Qty"
+                                value={quantity}
+                                onChange={e => setQuantity(e.target.value)}
+                                className="w-20 sm:w-24"
+                                min="1"
+                            />
+                            <Button onClick={handleAddItem} size="icon" className="shrink-0">
+                                <Plus className="w-4 h-4" />
+                            </Button>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -212,7 +216,7 @@ export function EntryForm({ onSubmit, onCancel }: { onSubmit: (data: any) => voi
                     onChange={e => setPrice(e.target.value)}
                     className="text-right"
                 />
-                <p className="text-xs text-muted-foreground">Total: ₹{(calculateTotalPrice() as number).toFixed(2)}</p>
+                <p className="text-xs text-muted-foreground">Total: ₦{(calculateTotalPrice() as number).toFixed(2)}</p>
             </div>
 
             {/* Payment Status */}

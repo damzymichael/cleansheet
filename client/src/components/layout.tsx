@@ -18,14 +18,15 @@ const navItems = [
 
 export default function Layout({ children }: { children: React.ReactNode }) {
     const [sidebarOpen, setSidebarOpen] = useState(true);
+    const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
     const { pathname } = useLocation();
 
     return (
-        <div className="flex h-screen bg-background">
-            {/* Sidebar */}
+        <div className="flex h-screen bg-background relative">
+            {/* Sidebar - Desktop */}
             <aside
                 className={cn(
-                    "bg-sidebar text-sidebar-foreground border-r border-sidebar-border transition-all duration-300",
+                    "bg-sidebar text-sidebar-foreground border-r border-sidebar-border transition-all duration-300 hidden md:block",
                     sidebarOpen ? "w-64" : "w-20",
                 )}
             >
@@ -58,12 +59,49 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                 </nav>
             </aside>
 
+            {/* Mobile Navigation Overlay */}
+            {mobileMenuOpen && (
+                <div className="fixed inset-0 z-50 md:hidden bg-background/80 backdrop-blur-sm animate-in fade-in duration-200">
+                    <div className="fixed inset-y-0 left-0 w-64 bg-sidebar text-sidebar-foreground border-r border-sidebar-border p-6 shadow-xl animate-in slide-in-from-left duration-300">
+                        <div className="flex items-center justify-between mb-8">
+                            <h1 className="text-xl font-bold">DryCleaner</h1>
+                            <Button variant="ghost" size="icon" onClick={() => setMobileMenuOpen(false)}>
+                                <X className="w-5 h-5" />
+                            </Button>
+                        </div>
+                        <nav className="space-y-4">
+                            {navItems.map(item => {
+                                const Icon = item.icon;
+                                const isActive = pathname === item.href;
+                                return (
+                                    <Link key={item.href} to={item.href} onClick={() => setMobileMenuOpen(false)}>
+                                        <Button
+                                            variant={isActive ? "default" : "ghost"}
+                                            className={cn(
+                                                "w-full justify-start gap-4 text-lg py-6",
+                                                isActive && "bg-sidebar-primary text-sidebar-primary-foreground",
+                                            )}
+                                        >
+                                            <Icon className="w-6 h-6 shrink-0" />
+                                            <span>{item.label}</span>
+                                        </Button>
+                                    </Link>
+                                );
+                            })}
+                        </nav>
+                    </div>
+                </div>
+            )}
+
             {/* Main Content */}
-            <main className="flex-1 flex flex-col overflow-auto">
-                <header className="border-b border-border px-8 py-4 flex items-center justify-end bg-background">
+            <main className="flex-1 flex flex-col overflow-auto min-w-0">
+                <header className="border-b border-border px-4 md:px-8 py-4 flex items-center justify-between md:justify-end bg-background sticky top-0 z-40">
+                    <Button variant="ghost" size="icon" className="md:hidden" onClick={() => setMobileMenuOpen(true)}>
+                        <Menu className="w-6 h-6" />
+                    </Button>
                     <ModeToggle />
                 </header>
-                <div className="flex-1 overflow-auto p-8">{children}</div>
+                <div className="flex-1 overflow-auto p-4 md:p-8">{children}</div>
             </main>
         </div>
     );

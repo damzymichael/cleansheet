@@ -138,12 +138,12 @@ export default function Staff() {
         <Layout>
             <div className="space-y-8">
                 {/* Header */}
-                <div className="flex items-center justify-between">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                     <div>
-                        <h1 className="text-3xl font-bold">Staff Management</h1>
-                        <p className="text-muted-foreground">Manage staff and their permissions</p>
+                        <h1 className="text-2xl md:text-3xl font-bold">Staff Management</h1>
+                        <p className="text-sm md:text-base text-muted-foreground">Manage staff and their permissions</p>
                     </div>
-                    <Button onClick={handleNewClick} className="gap-2" size="lg">
+                    <Button onClick={handleNewClick} className="gap-2 w-full sm:w-auto" size="lg">
                         <Plus className="w-5 h-5" />
                         Add Staff
                     </Button>

@@ -48,19 +48,19 @@ export default function Entries() {
         <Layout>
             <div className="space-y-8">
                 {/* Header */}
-                <div className="flex items-center justify-between">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                     <div>
-                        <h1 className="text-3xl font-bold">Entries</h1>
-                        <p className="text-muted-foreground">Manage all customer entries</p>
+                        <h1 className="text-2xl md:text-3xl font-bold">Entries</h1>
+                        <p className="text-sm md:text-base text-muted-foreground">Manage all customer entries</p>
                     </div>
-                    <Button onClick={() => setShowNewEntry(true)} className="gap-2" size="lg">
+                    <Button onClick={() => setShowNewEntry(true)} className="gap-2 w-full sm:w-auto" size="lg">
                         <Plus className="w-5 h-5" />
                         New Entry
                     </Button>
                 </div>
 
                 {/* Filters */}
-                <div className="flex gap-4 items-end">
+                <div className="flex flex-col sm:flex-row gap-4 items-stretch sm:items-end font-sans">
                     <div className="flex-1">
                         <label className="text-sm font-medium">Search</label>
                         <Input
@@ -70,11 +70,11 @@ export default function Entries() {
                             className="mt-2"
                         />
                     </div>
-                    <div>
+                    <div className="w-full sm:w-40">
                         <label className="text-sm font-medium">Status</label>
                         {/* @ts-ignore  */}
                         <Select value={filterStatus} onValueChange={setFilterStatus}>
-                            <SelectTrigger className="w-40 mt-2">
+                            <SelectTrigger className="w-full mt-2">
                                 <SelectValue />
                             </SelectTrigger>
                             <SelectContent>
@@ -102,7 +102,7 @@ export default function Entries() {
                                 {filteredEntries.map(entry => (
                                     <div
                                         key={entry.id}
-                                        className="flex items-center justify-between p-4 border rounded-none hover:bg-muted transition"
+                                        className="flex flex-col sm:flex-row sm:items-center justify-between p-4 border rounded-none hover:bg-muted transition gap-4"
                                     >
                                         <div className="space-y-2 flex-1">
                                             <p className="font-medium text-lg">{entry.customerName}</p>
@@ -118,14 +118,14 @@ export default function Entries() {
                                                 ))}
                                             </div>
                                         </div>
-                                        <div className="text-right space-y-2">
-                                            <p className="text-lg font-bold">₹{entry.price}</p>
-                                            <div className="flex gap-2">
+                                        <div className="flex flex-row sm:flex-col items-center sm:items-end justify-between sm:justify-center gap-2">
+                                            <div className="text-right">
+                                                <p className="text-lg font-bold">₦{entry.price}</p>
                                                 <Badge variant={entry.isPaid ? "default" : "secondary"}>
                                                     {entry.isPaid ? "Paid" : "Unpaid"}
                                                 </Badge>
                                             </div>
-                                            <div className="flex gap-2 pt-2">
+                                            <div className="flex gap-2">
                                                 <Button variant="ghost" size="icon">
                                                     <Edit2 className="w-4 h-4" />
                                                 </Button>

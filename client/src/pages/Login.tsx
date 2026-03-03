@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 
 function Login() {
     return (
-        <div className="min-h-screen pt-20 gap-4 px-4 bg-background border-4">
+        <div className="min-h-screen pt-20 gap-4 px-4 bg-background">
             <div className="max-w-150 mx-auto">
                 <Card>
                     <CardHeader>

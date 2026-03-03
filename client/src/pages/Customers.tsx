@@ -113,12 +113,14 @@ export default function Customers() {
         <Layout>
             <div className="space-y-8">
                 {/* Header */}
-                <div className="flex items-center justify-between">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                     <div>
-                        <h1 className="text-3xl font-bold">Customers</h1>
-                        <p className="text-muted-foreground">Manage customer profiles and history</p>
+                        <h1 className="text-2xl md:text-3xl font-bold">Customers</h1>
+                        <p className="text-sm md:text-base text-muted-foreground">
+                            Manage customer profiles and history
+                        </p>
                     </div>
-                    <Button onClick={handleNewClick} className="gap-2" size="lg">
+                    <Button onClick={handleNewClick} className="gap-2 w-full sm:w-auto" size="lg">
                         <Plus className="w-5 h-5" />
                         Add Customer
                     </Button>
@@ -142,46 +144,61 @@ export default function Customers() {
                                     return (
                                         <div
                                             key={customer.id}
-                                            className="flex items-center justify-between p-4 border rounded-none hover:bg-muted transition"
+                                            className="flex flex-col md:flex-row md:items-center justify-between p-4 border rounded-none hover:bg-muted transition gap-4"
                                         >
                                             <div className="space-y-2 flex-1">
                                                 <p className="font-medium text-lg">{customer.name}</p>
-                                                {customer.phone && (
-                                                    <p className="text-sm text-muted-foreground">📞 {customer.phone}</p>
-                                                )}
-                                                {customer.email && (
-                                                    <p className="text-sm text-muted-foreground">✉️ {customer.email}</p>
-                                                )}
-                                                {customer.address && (
-                                                    <p className="text-sm text-muted-foreground">
-                                                        📍 {customer.address}
-                                                    </p>
-                                                )}
+                                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-1">
+                                                    {customer.phone && (
+                                                        <p className="text-sm text-muted-foreground whitespace-nowrap overflow-hidden text-ellipsis">
+                                                            📞 {customer.phone}
+                                                        </p>
+                                                    )}
+                                                    {customer.email && (
+                                                        <p className="text-sm text-muted-foreground whitespace-nowrap overflow-hidden text-ellipsis">
+                                                            ✉️ {customer.email}
+                                                        </p>
+                                                    )}
+                                                    {customer.address && (
+                                                        <p className="text-sm text-muted-foreground col-span-full">
+                                                            📍 {customer.address}
+                                                        </p>
+                                                    )}
+                                                </div>
                                             </div>
-                                            <div className="text-right space-y-3">
-                                                <div className="grid grid-cols-3 gap-4 text-center">
+                                            <div className="flex flex-col sm:flex-row md:flex-col items-stretch sm:items-center md:items-end justify-between gap-4">
+                                                <div className="grid grid-cols-3 gap-2 sm:gap-4 text-center min-w-[200px]">
                                                     <div>
-                                                        <p className="text-xs text-muted-foreground">Entries</p>
-                                                        <p className="text-lg font-bold">{stats.totalEntries}</p>
-                                                    </div>
-                                                    <div>
-                                                        <p className="text-xs text-muted-foreground">Total Spent</p>
-                                                        <p className="text-lg font-bold">
-                                                            ₹{stats.totalSpent.toFixed(0)}
+                                                        <p className="text-[10px] text-muted-foreground uppercase tracking-tight">
+                                                            Entries
+                                                        </p>
+                                                        <p className="text-sm md:text-lg font-bold">
+                                                            {stats.totalEntries}
                                                         </p>
                                                     </div>
                                                     <div>
-                                                        <p className="text-xs text-muted-foreground">Unpaid</p>
-                                                        <p className="text-lg font-bold text-amber-600">
+                                                        <p className="text-[10px] text-muted-foreground uppercase tracking-tight">
+                                                            Spent
+                                                        </p>
+                                                        <p className="text-sm md:text-lg font-bold">
+                                                            ₦{stats.totalSpent.toFixed(0)}
+                                                        </p>
+                                                    </div>
+                                                    <div>
+                                                        <p className="text-[10px] text-muted-foreground uppercase tracking-tight">
+                                                            Unpaid
+                                                        </p>
+                                                        <p className="text-sm md:text-lg font-bold text-amber-600">
                                                             {stats.unpaidEntries}
                                                         </p>
                                                     </div>
                                                 </div>
-                                                <div className="flex gap-2">
+                                                <div className="flex gap-2 justify-end">
                                                     <Button
                                                         variant="outline"
                                                         size="sm"
                                                         onClick={() => handleViewHistory(customer)}
+                                                        className="flex-1 sm:flex-none"
                                                     >
                                                         <BarChart3 className="w-4 h-4 mr-1" />
                                                         History
@@ -288,7 +305,7 @@ export default function Customers() {
                                     <p className="text-sm text-muted-foreground">
                                         {entry.items.map((i: any) => `${i.quantity}x ${i.clothName}`).join(", ")}
                                     </p>
-                                    <p className="text-lg font-bold">₹{entry.price}</p>
+                                    <p className="text-lg font-bold">₦{entry.price}</p>
                                 </div>
                             ))
                         )}

@@ -78,12 +78,12 @@ export default function Clothes() {
         <Layout>
             <div className="space-y-8">
                 {/* Header */}
-                <div className="flex items-center justify-between">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                     <div>
-                        <h1 className="text-3xl font-bold">Clothes Management</h1>
-                        <p className="text-muted-foreground">Add and manage clothing types</p>
+                        <h1 className="text-2xl md:text-3xl font-bold">Clothes Management</h1>
+                        <p className="text-sm md:text-base text-muted-foreground">Add and manage clothing types</p>
                     </div>
-                    <Button onClick={handleNewClick} className="gap-2" size="lg">
+                    <Button onClick={handleNewClick} className="gap-2 w-full sm:w-auto" size="lg">
                         <Plus className="w-5 h-5" />
                         Add Clothes
                     </Button>
@@ -106,7 +106,7 @@ export default function Clothes() {
                                 <CardContent className="space-y-4">
                                     <div>
                                         <p className="text-sm text-muted-foreground">Default Price</p>
-                                        <p className="text-2xl font-bold">₹{cloth.price.toFixed(2)}</p>
+                                        <p className="text-2xl font-bold">₦{cloth.price.toFixed(2)}</p>
                                     </div>
                                     <div className="flex gap-2">
                                         <Button
@@ -150,7 +150,7 @@ export default function Clothes() {
                             />
                         </div>
                         <div className="space-y-2">
-                            <Label htmlFor="price">Default Price (₹)</Label>
+                            <Label htmlFor="price">Default Price (₦)</Label>
                             <Input
                                 id="price"
                                 type="number"

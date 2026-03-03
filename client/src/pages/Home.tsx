@@ -64,61 +64,63 @@ export default function Home() {
         <Layout>
             <div className="space-y-8">
                 {/* Header */}
-                <div className="flex items-center justify-between">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                     <div>
-                        <h1 className="text-3xl font-bold">Dashboard</h1>
-                        <p className="text-muted-foreground">Manage your dry-cleaning business</p>
+                        <h1 className="text-2xl md:text-3xl font-bold">Dashboard</h1>
+                        <p className="text-sm md:text-base text-muted-foreground">Manage your dry-cleaning business</p>
                     </div>
-                    <Button onClick={() => setShowNewEntry(true)} className="gap-2" size="lg">
+                    <Button onClick={() => setShowNewEntry(true)} className="gap-2 w-full sm:w-auto" size="lg">
                         <Plus className="w-5 h-5" />
                         New Entry
                     </Button>
                 </div>
 
                 {/* Stats */}
-                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
                     <Card>
-                        <CardHeader className="pb-3">
-                            <CardTitle className="text-sm font-medium text-muted-foreground">Total Entries</CardTitle>
+                        <CardHeader className="pb-2 p-4 md:p-6">
+                            <CardTitle className="text-xs md:text-sm font-medium text-muted-foreground uppercase tracking-wider">
+                                Total Entries
+                            </CardTitle>
                         </CardHeader>
-                        <CardContent>
-                            <div className="text-3xl font-bold">{stats.total}</div>
+                        <CardContent className="p-4 md:p-6 pt-0 md:pt-0">
+                            <div className="text-2xl md:text-3xl font-bold">{stats.total}</div>
                         </CardContent>
                     </Card>
 
                     <Card>
-                        <CardHeader className="pb-3">
-                            <CardTitle className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
-                                <CheckCircle2 className="w-4 h-4 text-green-600" />
+                        <CardHeader className="pb-2 p-4 md:p-6">
+                            <CardTitle className="flex items-center gap-2 text-xs md:text-sm font-medium text-muted-foreground uppercase tracking-wider">
+                                <CheckCircle2 className="w-3 h-3 md:w-4 md:h-4 text-green-600" />
                                 Paid
                             </CardTitle>
                         </CardHeader>
-                        <CardContent>
-                            <div className="text-3xl font-bold">{stats.paid}</div>
+                        <CardContent className="p-4 md:p-6 pt-0 md:pt-0">
+                            <div className="text-2xl md:text-3xl font-bold">{stats.paid}</div>
                         </CardContent>
                     </Card>
 
                     <Card>
-                        <CardHeader className="pb-3">
-                            <CardTitle className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
-                                <AlertCircle className="w-4 h-4 text-amber-600" />
+                        <CardHeader className="pb-2 p-4 md:p-6">
+                            <CardTitle className="flex items-center gap-2 text-xs md:text-sm font-medium text-muted-foreground uppercase tracking-wider">
+                                <AlertCircle className="w-3 h-3 md:w-4 md:h-4 text-amber-600" />
                                 Unpaid
                             </CardTitle>
                         </CardHeader>
-                        <CardContent>
-                            <div className="text-3xl font-bold">{stats.unpaid}</div>
+                        <CardContent className="p-4 md:p-6 pt-0 md:pt-0">
+                            <div className="text-2xl md:text-3xl font-bold">{stats.unpaid}</div>
                         </CardContent>
                     </Card>
 
                     <Card>
-                        <CardHeader className="pb-3">
-                            <CardTitle className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
-                                <Clock className="w-4 h-4 text-blue-600" />
+                        <CardHeader className="pb-2 p-4 md:p-6">
+                            <CardTitle className="flex items-center gap-2 text-xs md:text-sm font-medium text-muted-foreground uppercase tracking-wider">
+                                <Clock className="w-3 h-3 md:w-4 md:h-4 text-blue-600" />
                                 Due Soon
                             </CardTitle>
                         </CardHeader>
-                        <CardContent>
-                            <div className="text-3xl font-bold">{stats.due}</div>
+                        <CardContent className="p-4 md:p-6 pt-0 md:pt-0">
+                            <div className="text-2xl md:text-3xl font-bold">{stats.due}</div>
                         </CardContent>
                     </Card>
                 </div>
@@ -143,11 +145,11 @@ export default function Home() {
                                     .map(entry => (
                                         <div
                                             key={entry.id}
-                                            className="flex items-center justify-between p-4 border rounded-none"
+                                            className="flex flex-col sm:flex-row sm:items-center justify-between p-4 border rounded-none gap-4"
                                         >
                                             <div className="space-y-1">
                                                 <p className="font-medium">{entry.customerName}</p>
-                                                <p className="text-sm text-muted-foreground">
+                                                <p className="text-xs md:text-sm text-muted-foreground">
                                                     {entry.items.length} item(s) •{" "}
                                                     {entry.items
                                                         .map((i: any) => i.quantity)
@@ -155,15 +157,15 @@ export default function Home() {
                                                     pieces
                                                 </p>
                                             </div>
-                                            <div className="text-right space-y-1">
-                                                <p className="text-sm font-medium">
+                                            <div className="flex flex-row sm:flex-col items-center sm:items-end justify-between sm:justify-center gap-2">
+                                                <p className="text-sm font-medium order-2 sm:order-1">
                                                     {new Date(entry.dueDate).toLocaleDateString()}
                                                 </p>
-                                                <div className="flex gap-2">
+                                                <div className="flex gap-2 order-1 sm:order-2">
                                                     <Badge variant={entry.isPaid ? "default" : "secondary"}>
                                                         {entry.isPaid ? "Paid" : "Unpaid"}
                                                     </Badge>
-                                                    <Badge variant="outline">₹{entry.price}</Badge>
+                                                    <Badge variant="outline">₦{entry.price}</Badge>
                                                 </div>
                                             </div>
                                         </div>
