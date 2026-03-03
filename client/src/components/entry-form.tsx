@@ -6,6 +6,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Command, CommandList, CommandEmpty, CommandGroup, CommandInput, CommandItem } from "@/components/ui/command";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Plus, X } from "lucide-react";
+import { DatePicker } from "@/components/ui/date-picker";
 
 interface Item {
     clothId: string;
@@ -14,13 +15,23 @@ interface Item {
     price: number;
 }
 
-export function EntryForm({ onSubmit, onCancel }: { onSubmit: (data: any) => void; onCancel: () => void }) {
-    const [customerName, setCustomerName] = useState("");
+export function EntryForm({
+    onSubmit,
+    onCancel,
+    initialData,
+}: {
+    onSubmit: (data: any) => void;
+    onCancel: () => void;
+    initialData?: any;
+}) {
+    const [customerName, setCustomerName] = useState(initialData?.customerName || "");
     const [customerOpen, setCustomerOpen] = useState(false);
-    const [items, setItems] = useState<Item[]>([]);
-    const [dueDate, setDueDate] = useState("");
-    const [isPaid, setIsPaid] = useState(false);
-    const [price, setPrice] = useState("");
+    const [items, setItems] = useState<Item[]>(initialData?.items || []);
+    const [dueDate, setDueDate] = useState<Date | undefined>(
+        initialData?.dueDate ? new Date(initialData.dueDate) : undefined,
+    );
+    const [isPaid, setIsPaid] = useState(initialData?.isPaid || false);
+    const [price, setPrice] = useState(initialData?.price || "");
     const [selectedCloth, setSelectedCloth] = useState<any>(null);
     const [quantity, setQuantity] = useState("");
     const [clothOpen, setClothOpen] = useState(false);
@@ -56,29 +67,30 @@ export function EntryForm({ onSubmit, onCancel }: { onSubmit: (data: any) => voi
 
     const calculateTotalPrice = () => {
         const itemsTotal = items.reduce((sum, item) => sum + item.price, 0);
-        return price || itemsTotal;
+        return +price || itemsTotal;
     };
 
     const handleSubmit = () => {
         if (!customerName || items.length === 0 || !dueDate) {
-            alert("Please fill in all required fields");
+            alert("Please fill in all required fields (Customer, Items, and Due Date)");
             return;
         }
         onSubmit({
             customerName,
             items,
-            dueDate,
+            dueDate: dueDate.toISOString(),
             isPaid,
             price: parseFloat(calculateTotalPrice().toString()),
         });
     };
+
     return (
         <div className="space-y-6">
             {/* Customer Selection */}
             <div className="space-y-2">
                 <Label>Customer *</Label>
                 <Popover open={customerOpen} onOpenChange={setCustomerOpen}>
-                    <PopoverTrigger>
+                    <PopoverTrigger className="w-full">
                         <Button variant="outline" className="w-full justify-start bg-transparent">
                             {customerName || "Select or type customer name..."}
                         </Button>
@@ -149,7 +161,7 @@ export function EntryForm({ onSubmit, onCancel }: { onSubmit: (data: any) => voi
                     <div className="flex flex-col sm:flex-row gap-2">
                         <div className="flex-1 min-w-0">
                             <Popover open={clothOpen} onOpenChange={setClothOpen}>
-                                <PopoverTrigger>
+                                <PopoverTrigger className="w-full">
                                     <Button
                                         variant="outline"
                                         className="w-full justify-start bg-transparent overflow-hidden"
@@ -203,7 +215,7 @@ export function EntryForm({ onSubmit, onCancel }: { onSubmit: (data: any) => voi
             {/* Due Date */}
             <div className="space-y-2">
                 <Label>Due Date *</Label>
-                <Input type="date" value={dueDate} onChange={e => setDueDate(e.target.value)} />
+                <DatePicker date={dueDate} setDate={setDueDate} />
             </div>
 
             {/* Price */}

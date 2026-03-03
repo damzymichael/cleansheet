@@ -31,9 +31,9 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                 )}
             >
                 <div className="p-6 flex items-center justify-between">
-                    {sidebarOpen && <h1 className="text-xl font-bold">DryCleaner</h1>}
+                    {sidebarOpen && <h1 className="text-xl font-bold">Aftermart Laundry</h1>}
                     <Button variant="ghost" size="icon" onClick={() => setSidebarOpen(!sidebarOpen)}>
-                        {sidebarOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+                        {sidebarOpen ? <X className="w-7 h-7" /> : <Menu className="w-7 h-7" />}
                     </Button>
                 </div>
 

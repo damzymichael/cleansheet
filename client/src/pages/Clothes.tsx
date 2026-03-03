@@ -9,6 +9,8 @@ import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import Layout from "@/components/layout";
 
+import { ConfirmDeleteDialog } from "@/components/confirm-delete-dialog";
+
 interface Cloth {
     id: number;
     name: string;
@@ -20,6 +22,10 @@ export default function Clothes() {
     const [showDialog, setShowDialog] = useState(false);
     const [editingId, setEditingId] = useState<number | null>(null);
     const [formData, setFormData] = useState({ name: "", price: "" });
+
+    // Delete Confirmation Logic
+    const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+    const [clothToDelete, setClothToDelete] = useState<number | null>(null);
 
     useEffect(() => {
         const stored = localStorage.getItem("clothes");
@@ -62,10 +68,19 @@ export default function Clothes() {
         setShowDialog(true);
     };
 
-    const handleDelete = (id: number) => {
-        const updated = clothes.filter(c => c.id !== id);
-        setClothes(updated);
-        localStorage.setItem("clothes", JSON.stringify(updated));
+    const handleDeleteClick = (id: number) => {
+        setClothToDelete(id);
+        setIsDeleteDialogOpen(true);
+    };
+
+    const confirmDelete = () => {
+        if (clothToDelete !== null) {
+            const updated = clothes.filter(c => c.id !== clothToDelete);
+            setClothes(updated);
+            localStorage.setItem("clothes", JSON.stringify(updated));
+            setIsDeleteDialogOpen(false);
+            setClothToDelete(null);
+        }
     };
 
     const handleNewClick = () => {
@@ -80,38 +95,43 @@ export default function Clothes() {
                 {/* Header */}
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                     <div>
-                        <h1 className="text-2xl md:text-3xl font-bold">Clothes Management</h1>
-                        <p className="text-sm md:text-base text-muted-foreground">Add and manage clothing types</p>
+                        <h1 className="text-2xl md:text-3xl font-bold text-foreground">Clothes Management</h1>
+                        <p className="text-sm md:text-base text-muted-foreground mt-1">
+                            Add and manage clothing types and pricing
+                        </p>
                     </div>
                     <Button onClick={handleNewClick} className="gap-2 w-full sm:w-auto" size="lg">
                         <Plus className="w-5 h-5" />
-                        Add Clothes
+                        Add Cloth Type
                     </Button>
                 </div>
 
                 {/* Grid of Clothes */}
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                     {clothes.length === 0 ? (
-                        <div className="col-span-full text-center py-12 text-muted-foreground">
-                            <p>No clothes added yet. Create one to get started.</p>
+                        <div className="col-span-full text-center py-16 text-muted-foreground border-2 border-dashed rounded-xl">
+                            <p className="text-lg">No clothes added yet. Create one to get started.</p>
                         </div>
                     ) : (
                         clothes.map(cloth => (
-                            <Card key={cloth.id} className="rounded-none">
-                                <CardHeader>
-                                    <div className="flex items-start justify-between">
-                                        <CardTitle>{cloth.name}</CardTitle>
-                                    </div>
+                            <Card
+                                key={cloth.id}
+                                className="border-border shadow-sm hover:shadow-md transition-shadow duration-200 overflow-hidden group"
+                            >
+                                <CardHeader className="bg-muted/30 border-b pb-4">
+                                    <CardTitle className="text-lg">{cloth.name}</CardTitle>
                                 </CardHeader>
-                                <CardContent className="space-y-4">
-                                    <div>
-                                        <p className="text-sm text-muted-foreground">Default Price</p>
-                                        <p className="text-2xl font-bold">₦{cloth.price.toFixed(2)}</p>
+                                <CardContent className="pt-6 space-y-6">
+                                    <div className="flex items-baseline justify-between">
+                                        <p className="text-sm font-medium text-muted-foreground">Default Price</p>
+                                        <p className="text-3xl font-bold text-foreground">
+                                            ₦{cloth.price.toLocaleString()}
+                                        </p>
                                     </div>
                                     <div className="flex gap-2">
                                         <Button
                                             variant="outline"
-                                            className="flex-1 bg-transparent"
+                                            className="flex-1 hover:text-primary hover:border-primary"
                                             onClick={() => handleEdit(cloth)}
                                         >
                                             <Edit2 className="w-4 h-4 mr-2" />
@@ -119,8 +139,8 @@ export default function Clothes() {
                                         </Button>
                                         <Button
                                             variant="outline"
-                                            className="flex-1 bg-transparent"
-                                            onClick={() => handleDelete(cloth.id)}
+                                            className="flex-1 hover:text-destructive hover:border-destructive"
+                                            onClick={() => handleDeleteClick(cloth.id)}
                                         >
                                             <Trash2 className="w-4 h-4 mr-2" />
                                             Delete
@@ -131,7 +151,16 @@ export default function Clothes() {
                         ))
                     )}
                 </div>
+
+                <ConfirmDeleteDialog
+                    isOpen={isDeleteDialogOpen}
+                    onOpenChange={setIsDeleteDialogOpen}
+                    onConfirm={confirmDelete}
+                    title="Delete Clothing Type"
+                    description={`Are you sure you want to delete this clothing type? This will remove it from the list of available items for new entries.`}
+                />
             </div>
+            {/* ... dialog content ... */}
 
             {/* Add/Edit Dialog */}
             <Dialog open={showDialog} onOpenChange={setShowDialog}>
