@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { Plus, Trash2, Edit2, Search } from "lucide-react";
+import { Plus, Trash2, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -8,6 +8,11 @@ import { Input } from "@/components/ui/input";
 import Layout from "@/components/layout";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ConfirmDeleteDialog } from "@/components/confirm-delete-dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Share2, Check } from "lucide-react";
+import { getInvoice, deleteInvoice, saveInvoice } from "@/lib/db";
+import { generateInvoice } from "@/lib/invoice";
+import { toast } from "sonner";
 
 export default function Entries() {
     const navigate = useNavigate();
@@ -18,6 +23,14 @@ export default function Entries() {
     // Delete Confirmation Logic
     const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
     const [entryToDelete, setEntryToDelete] = useState<number | null>(null);
+
+    // Show More Dialog State
+    const [showMoreEntry, setShowMoreEntry] = useState<any>(null);
+    const [isMoreOpen, setIsMoreOpen] = useState(false);
+
+    // Paid Confirmation State
+    const [isPaidDialogOpen, setIsPaidDialogOpen] = useState(false);
+    const [entryToMarkAsPaid, setEntryToMarkAsPaid] = useState<any>(null);
 
     useEffect(() => {
         const stored = localStorage.getItem("entries");
@@ -31,13 +44,74 @@ export default function Entries() {
         setIsDeleteDialogOpen(true);
     };
 
-    const confirmDelete = () => {
+    const confirmDelete = async () => {
         if (entryToDelete !== null) {
             const newEntries = entries.filter(e => e.id !== entryToDelete);
             setEntries(newEntries);
             localStorage.setItem("entries", JSON.stringify(newEntries));
+
+            // Also cleanup PDF if it exists
+            await deleteInvoice(entryToDelete);
+
             setIsDeleteDialogOpen(false);
             setEntryToDelete(null);
+            toast.success("Entry deleted");
+        }
+    };
+
+    const handleMarkAsPaidClick = (entry: any) => {
+        setEntryToMarkAsPaid(entry);
+        setIsPaidDialogOpen(true);
+    };
+
+    const confirmMarkAsPaid = async () => {
+        if (!entryToMarkAsPaid) return;
+
+        const newEntries = entries.map(e => (e.id === entryToMarkAsPaid.id ? { ...e, isPaid: true } : e));
+        setEntries(newEntries);
+        localStorage.setItem("entries", JSON.stringify(newEntries));
+
+        // Delete PDF once paid
+        await deleteInvoice(entryToMarkAsPaid.id);
+        setIsPaidDialogOpen(false);
+        setEntryToMarkAsPaid(null);
+        toast.success("Entry marked as paid");
+    };
+
+    const handleShare = async (entry: any) => {
+        try {
+            let blob = await getInvoice(entry.id);
+
+            // If not found, regenerate it!
+            if (!blob) {
+                toast.info("Regenerating missing invoice...");
+                blob = await generateInvoice({
+                    customerName: entry.customerName,
+                    items: entry.items,
+                    total: entry.price,
+                    entryDate: entry.createdAt || new Date().toISOString(),
+                });
+                // Save it back for future use
+                await saveInvoice(entry.id, blob);
+            }
+
+            const file = new File([blob], `Invoice-${entry.customerName}.pdf`, { type: "application/pdf" });
+
+            if (navigator.share) {
+                navigator.share({
+                    files: [file],
+                    title: `Invoice for ${entry.customerName}`,
+                    text: `Laundry invoice for ${entry.customerName} - ₦${entry.price.toLocaleString()}`,
+                });
+            } else {
+                console.log("No navigator.share");
+                const url = URL.createObjectURL(blob);
+                window.open(url);
+                toast.info("Opening invoice in new tab (Sharing not supported)");
+            }
+        } catch (err) {
+            console.error(err);
+            toast.error("Failed to share invoice");
         }
     };
 
@@ -152,7 +226,7 @@ export default function Entries() {
                                                 </span>
                                             </p>
                                             <div className="flex gap-2 flex-wrap">
-                                                {entry.items.map((item: any, idx: number) => (
+                                                {entry.items.slice(0, 2).map((item: any, idx: number) => (
                                                     <Badge
                                                         key={idx}
                                                         variant="outline"
@@ -161,6 +235,19 @@ export default function Entries() {
                                                         {item.quantity}x {item.clothName}
                                                     </Badge>
                                                 ))}
+                                                {entry.items.length > 2 && (
+                                                    <Button
+                                                        variant="link"
+                                                        size="sm"
+                                                        className="h-6 px-1 text-xs text-primary"
+                                                        onClick={() => {
+                                                            setShowMoreEntry(entry);
+                                                            setIsMoreOpen(true);
+                                                        }}
+                                                    >
+                                                        +{entry.items.length - 2} more...
+                                                    </Button>
+                                                )}
                                             </div>
                                         </div>
                                         <div className="flex flex-row sm:flex-col items-center sm:items-end justify-between sm:justify-center gap-4 border-t sm:border-0 pt-4 sm:pt-0">
@@ -170,13 +257,28 @@ export default function Entries() {
                                                 </p>
                                             </div>
                                             <div className="flex gap-2 opacity-50 group-hover:opacity-100 transition-opacity">
-                                                <Button
-                                                    variant="outline"
-                                                    size="icon"
-                                                    className="h-10 w-10 text-muted-foreground hover:text-primary hover:border-primary"
-                                                >
-                                                    <Edit2 className="w-4 h-4" />
-                                                </Button>
+                                                {!entry.isPaid && (
+                                                    <>
+                                                        <Button
+                                                            variant="outline"
+                                                            size="icon"
+                                                            title="Mark as Paid"
+                                                            className="h-10 w-10 text-green-600 hover:text-white hover:bg-green-600 hover:border-green-600"
+                                                            onClick={() => handleMarkAsPaidClick(entry)}
+                                                        >
+                                                            <Check className="w-4 h-4" />
+                                                        </Button>
+                                                        <Button
+                                                            variant="outline"
+                                                            size="icon"
+                                                            title="Share Invoice"
+                                                            className="h-10 w-10 text-primary hover:text-white hover:bg-primary hover:border-primary"
+                                                            onClick={() => handleShare(entry)}
+                                                        >
+                                                            <Share2 className="w-4 h-4" />
+                                                        </Button>
+                                                    </>
+                                                )}
                                                 <Button
                                                     variant="outline"
                                                     size="icon"
@@ -200,6 +302,60 @@ export default function Entries() {
                     title="Delete Entry"
                     description="Are you sure you want to delete this entry? This will permanently remove it from the records."
                 />
+
+                {/* Show More Dialog */}
+                <Dialog open={isMoreOpen} onOpenChange={setIsMoreOpen}>
+                    <DialogContent className="max-w-md">
+                        <DialogHeader>
+                            <DialogTitle>Order Items - {showMoreEntry?.customerName}</DialogTitle>
+                        </DialogHeader>
+                        <div className="space-y-4 py-4">
+                            <div className="border rounded-lg divide-y">
+                                {showMoreEntry?.items.map((item: any, idx: number) => (
+                                    <div key={idx} className="p-3 flex justify-between items-center">
+                                        <span className="font-medium">
+                                            {item.quantity}x {item.clothName}
+                                        </span>
+                                        <span className="text-muted-foreground">₦{item.price.toLocaleString()}</span>
+                                    </div>
+                                ))}
+                            </div>
+                            <div className="flex justify-between items-center pt-2 px-1">
+                                <span className="font-bold text-lg">Total</span>
+                                <span className="font-bold text-lg text-primary">
+                                    ₦{showMoreEntry?.price.toLocaleString()}
+                                </span>
+                            </div>
+                        </div>
+                        <DialogFooter>
+                            <Button onClick={() => setIsMoreOpen(false)}>Close</Button>
+                        </DialogFooter>
+                    </DialogContent>
+                </Dialog>
+
+                {/* Paid Confirmation Dialog */}
+                <Dialog open={isPaidDialogOpen} onOpenChange={setIsPaidDialogOpen}>
+                    <DialogContent className="max-w-md">
+                        <DialogHeader>
+                            <DialogTitle>Confirm Payment</DialogTitle>
+                        </DialogHeader>
+                        <div className="py-4">
+                            <p className="text-muted-foreground">
+                                Are you sure you want to mark the entry for{" "}
+                                <span className="font-bold text-foreground">"{entryToMarkAsPaid?.customerName}"</span>{" "}
+                                as paid? This will also remove the temporary invoice file.
+                            </p>
+                        </div>
+                        <DialogFooter className="flex gap-2">
+                            <Button variant="outline" onClick={() => setIsPaidDialogOpen(false)}>
+                                Cancel
+                            </Button>
+                            <Button className="bg-green-600 hover:bg-green-700 text-white" onClick={confirmMarkAsPaid}>
+                                Yes, Mark as Paid
+                            </Button>
+                        </DialogFooter>
+                    </DialogContent>
+                </Dialog>
             </div>
         </Layout>
     );

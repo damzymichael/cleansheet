@@ -1,5 +1,5 @@
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
-import { ThemeProvider } from "./components/theme-provider";
+import { ThemeProvider, useTheme } from "./components/theme-provider";
 import Home from "./pages/Home";
 import { Components } from "./pages/Components";
 import Login from "./pages/Login";
@@ -12,6 +12,13 @@ import Staff from "./pages/Staff";
 import NewEntry from "./pages/NewEntry";
 
 import CustomerDetail from "./pages/CustomerDetail";
+
+import { Toaster } from "sonner";
+
+function ToasterWithTheme() {
+    const { theme } = useTheme();
+    return <Toaster theme={theme as any} closeButton position="top-center" richColors />;
+}
 
 function App() {
     return (
@@ -30,6 +37,7 @@ function App() {
 
                     <Route path="components" element={<Components />} />
                 </Routes>
+                <ToasterWithTheme />
             </ThemeProvider>
         </Router>
     );
