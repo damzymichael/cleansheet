@@ -24,7 +24,6 @@ export default function Layout({ children }: { children: React.ReactNode }) {
     return (
         <div className="flex h-screen bg-background relative">
             {/* Sidebar - Desktop */}
-            Hi
             <aside
                 className={cn(
                     "bg-sidebar text-sidebar-foreground border-r border-sidebar-border transition-all duration-300 hidden md:block",
