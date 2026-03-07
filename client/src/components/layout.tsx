@@ -40,7 +40,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
     const { pullDistance, isRefreshing, containerRef } = usePullToRefresh(handleRefresh);
 
     return (
-        <div className="flex h-screen bg-background relative overflow-hidden">
+        <div className="flex h-dvh bg-background relative overflow-hidden">
             {/* Sidebar - Desktop */}
             <aside
                 className={cn(
@@ -120,7 +120,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
 
             {/* Main Content */}
             <main className="flex-1 flex flex-col min-w-0 bg-background overflow-hidden">
-                <header className="border-b border-border px-4 md:px-8 py-4 flex items-center justify-between md:justify-end bg-background sticky top-0 z-40 shrink-0">
+                <header className="border-b border-border px-4 md:px-8 py-4 flex items-center justify-between md:justify-end bg-background z-40 shrink-0">
                     <Button variant="ghost" size="icon" className="md:hidden" onClick={() => setMobileMenuOpen(true)}>
                         <Menu className="w-6 h-6" />
                     </Button>
