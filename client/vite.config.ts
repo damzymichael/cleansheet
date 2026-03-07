@@ -15,8 +15,8 @@ export default defineConfig({
                 enabled: true,
             },
             manifest: {
-                name: "Aftermart Laundry",
-                short_name: "Aftermart",
+                name: "Laundry Management",
+                short_name: "Laundry",
                 description: "Cloud-based laundry management system",
                 theme_color: "#ffffff",
                 icons: [

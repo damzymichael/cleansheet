@@ -24,6 +24,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
     return (
         <div className="flex h-screen bg-background relative">
             {/* Sidebar - Desktop */}
+            Hi
             <aside
                 className={cn(
                     "bg-sidebar text-sidebar-foreground border-r border-sidebar-border transition-all duration-300 hidden md:block",
@@ -31,7 +32,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                 )}
             >
                 <div className="p-6 flex items-center justify-between">
-                    {sidebarOpen && <h1 className="text-xl font-bold">Aftermart Laundry</h1>}
+                    {sidebarOpen && <h1 className="text-xl font-bold">Laundry</h1>}
                     <Button variant="ghost" size="icon" onClick={() => setSidebarOpen(!sidebarOpen)}>
                         {sidebarOpen ? <X className="w-7 h-7" /> : <Menu className="w-7 h-7" />}
                     </Button>
