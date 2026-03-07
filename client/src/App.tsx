@@ -25,9 +25,10 @@ function App() {
                     <Route path="customers" element={<Customers />} />
                     <Route path="customers/:id" element={<CustomerDetail />} />
                     <Route path="staff" element={<Staff />} />
-                    <Route path="components" element={<Components />} />
                     <Route path="login" element={<Login />} />
                     <Route path="signup" element={<Signup />} />
+
+                    <Route path="components" element={<Components />} />
                 </Routes>
             </ThemeProvider>
         </Router>

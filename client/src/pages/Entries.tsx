@@ -12,7 +12,7 @@ import { ConfirmDeleteDialog } from "@/components/confirm-delete-dialog";
 export default function Entries() {
     const navigate = useNavigate();
     const [entries, setEntries] = useState<any[]>([]);
-    const [filterStatus, setFilterStatus] = useState("All");
+    const [filterStatus, setFilterStatus] = useState("all");
     const [searchTerm, setSearchTerm] = useState("");
 
     // Delete Confirmation Logic
@@ -52,7 +52,7 @@ export default function Entries() {
 
     return (
         <Layout>
-            <div className="space-y-8">
+            <div className="space-y-8 pb-10">
                 {/* Header */}
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                     <div>
@@ -85,7 +85,8 @@ export default function Entries() {
                         <label className="text-sm font-medium mb-1.5 block text-foreground/80">Status</label>
                         <Select
                             value={filterStatus}
-                            onValueChange={value => setFilterStatus(value ?? "All")}
+                            // It's supposed to map the value to the display
+                            onValueChange={value => setFilterStatus(value ?? "all")}
                         >
                             <SelectTrigger className="w-full h-11">
                                 <SelectValue />

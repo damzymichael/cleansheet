@@ -63,7 +63,7 @@ export default function CustomerDetail() {
 
     return (
         <Layout>
-            <div className="space-y-8 max-w-5xl mx-auto">
+            <div className="space-y-8 max-w-5xl mx-auto pb-10">
                 {/* Header/Breadcrumbs */}
                 <div className="flex items-center gap-4">
                     <Button variant="ghost" size="icon" onClick={() => navigate("/customers")} className="rounded-full">

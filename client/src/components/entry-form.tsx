@@ -242,7 +242,7 @@ export function EntryForm({
             {/* Actions */}
             <div className="flex gap-2 justify-end">
                 <Button variant="outline" onClick={onCancel}>
-                    Cancel
+                    Go back
                 </Button>
                 <Button onClick={handleSubmit}>Create Entry</Button>
             </div>
