@@ -21,20 +21,49 @@ export default defineConfig({
                 theme_color: "#ffffff",
                 icons: [
                     {
-                        src: "/cleansheet.svg",
+                        src: "/android/launchericon-48x48.png",
+                        sizes: "48x48",
+                        type: "image/png",
+                    },
+                    {
+                        src: "/android/launchericon-72x72.png",
+                        sizes: "72x72",
+                        type: "image/png",
+                    },
+                    {
+                        src: "/android/launchericon-96x96.png",
+                        sizes: "96x96",
+                        type: "image/png",
+                    },
+                    {
+                        src: "/android/launchericon-144x144.png",
+                        sizes: "144x144",
+                        type: "image/png",
+                    },
+                    {
+                        src: "/android/launchericon-192x192.png",
                         sizes: "192x192",
-                        type: "image/svg+xml",
+                        type: "image/png",
                     },
                     {
-                        src: "/cleansheet.svg",
+                        src: "/android/launchericon-512x512.png",
                         sizes: "512x512",
-                        type: "image/svg+xml",
+                        type: "image/png",
                     },
                     {
-                        src: "/cleansheet.svg",
-                        sizes: "512x512",
-                        type: "image/svg+xml",
-                        purpose: "any maskable",
+                        src: "/ios/180.png",
+                        sizes: "180x180",
+                        type: "image/png",
+                    },
+                    {
+                        src: "/windows/Square44x44Logo.scale-100.png",
+                        sizes: "44x44",
+                        type: "image/png",
+                    },
+                    {
+                        src: "/windows/Square150x150Logo.scale-100.png",
+                        sizes: "150x150",
+                        type: "image/png",
                     },
                 ],
             },
