@@ -16,9 +16,11 @@ export default defineConfig({
             },
             manifest: {
                 name: "Laundry Management",
+                display: "standalone",
+                display_override: ["window-controls-overlay"],
                 short_name: "Laundry",
                 description: "Cloud-based laundry management system",
-                theme_color: "#ffffff",
+                theme_color: "#4f46e5",
                 icons: [
                     {
                         src: "/android/launchericon-48x48.png",
