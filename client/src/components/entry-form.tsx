@@ -5,9 +5,8 @@ import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Command, CommandList, CommandEmpty, CommandGroup, CommandInput, CommandItem } from "@/components/ui/command";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Plus, X, Search } from "lucide-react";
+import { Plus, X } from "lucide-react";
 import { DatePicker } from "@/components/ui/date-picker";
-import { CustomerModal } from "@/components/customer-modal";
 import { generateInvoice } from "@/lib/invoice";
 import { saveInvoice } from "@/lib/db";
 import { toast } from "sonner";
@@ -29,7 +28,6 @@ export function EntryForm({
     initialData?: any;
 }) {
     const [customerName, setCustomerName] = useState(initialData?.customerName || "");
-    const [showCustomerModal, setShowCustomerModal] = useState(false);
     const [items, setItems] = useState<Item[]>(initialData?.items || []);
     const [dueDate, setDueDate] = useState<Date | undefined>(
         initialData?.dueDate ? new Date(initialData.dueDate) : undefined,
@@ -39,9 +37,12 @@ export function EntryForm({
     const [selectedCloth, setSelectedCloth] = useState<any>(null);
     const [quantity, setQuantity] = useState("");
     const [clothOpen, setClothOpen] = useState(false);
+    const [customerOpen, setCustomerOpen] = useState(false);
+
+    type Customer = { address: string; email: string; id: number; name: string; phone: string };
 
     // Get stored data
-    const customers = useMemo(() => {
+    const customers: Customer[] = useMemo(() => {
         const stored = localStorage.getItem("customers");
         return stored ? JSON.parse(stored) : [];
     }, []);
@@ -84,7 +85,7 @@ export function EntryForm({
         const exists = customers.some((c: any) => c.name.trim().toLowerCase() === trimmedName.toLowerCase());
 
         if (!exists) {
-            setShowCustomerModal(true);
+            alert("Customer not found. Please select an existing customer.");
             return;
         }
 
@@ -116,41 +117,41 @@ export function EntryForm({
 
         onSubmit(entryData);
     };
-
     return (
         <div className="space-y-6">
             {/* Customer Selection */}
             <div className="space-y-2">
-                <Label htmlFor="customer-input">Customer *</Label>
-                <div className="relative">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                    <Input
-                        id="customer-input"
-                        list="customer-list"
-                        placeholder="Type customer name..."
-                        value={customerName}
-                        onChange={e => setCustomerName(e.target.value)}
-                        className="pl-9 h-11"
-                    />
-                    <datalist id="customer-list">
-                        {customers.map((customer: any) => (
-                            <option key={customer.id} value={customer.name} />
-                        ))}
-                    </datalist>
-                </div>
+                <Label>Customer Name *</Label>
+                <Popover open={customerOpen} onOpenChange={setCustomerOpen}>
+                    <PopoverTrigger className="w-full">
+                        <Button variant="outline" className="w-full justify-start bg-transparent overflow-hidden">
+                            <span className="truncate">{customerName ? customerName : "Select a customer..."}</span>
+                        </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-(--radix-popover-trigger-width) p-0" align="start">
+                        <Command>
+                            <CommandInput placeholder="Search customers..." />
+                            <CommandList>
+                                <CommandEmpty>No customers found.</CommandEmpty>
+                                <CommandGroup>
+                                    {customers.map((customer: Customer) => (
+                                        <CommandItem
+                                            key={customer.id}
+                                            value={customer.name}
+                                            onSelect={() => {
+                                                setCustomerName(customer.name);
+                                                setCustomerOpen(false);
+                                            }}
+                                        >
+                                            {customer.name}
+                                        </CommandItem>
+                                    ))}
+                                </CommandGroup>
+                            </CommandList>
+                        </Command>
+                    </PopoverContent>
+                </Popover>
             </div>
-
-            <CustomerModal
-                isOpen={showCustomerModal}
-                onOpenChange={setShowCustomerModal}
-                initialName={customerName}
-                onSuccess={newCustomer => {
-                    setCustomerName(newCustomer.name);
-                    // Force a re-memo of customers if needed, but since it's local storage it might not update immediately
-                    // For now, alert to retry submit or we can trigger submit again
-                    toast.success("Customer registered! You can now save the entry.");
-                }}
-            />
 
             {/* Clothes Items */}
             <div className="space-y-2">
