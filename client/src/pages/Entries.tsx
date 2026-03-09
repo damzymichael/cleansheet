@@ -1,6 +1,6 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Plus, Trash2, Search } from "lucide-react";
+import { Plus, Trash2, Search, Share2, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -9,14 +9,15 @@ import Layout from "@/components/layout";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ConfirmDeleteDialog } from "@/components/confirm-delete-dialog";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
-import { Share2, Check } from "lucide-react";
 import { getInvoice, deleteInvoice, saveInvoice } from "@/lib/db";
 import { generateInvoice } from "@/lib/invoice";
 import { toast } from "sonner";
+import { useStore } from "@/store/useStore";
+import type { Entry } from "@/lib/types";
 
 export default function Entries() {
     const navigate = useNavigate();
-    const [entries, setEntries] = useState<any[]>([]);
+    const { entries, updateEntry, deleteEntry, settings } = useStore();
     const [filterStatus, setFilterStatus] = useState("all");
     const [searchTerm, setSearchTerm] = useState("");
 
@@ -25,19 +26,12 @@ export default function Entries() {
     const [entryToDelete, setEntryToDelete] = useState<number | null>(null);
 
     // Show More Dialog State
-    const [showMoreEntry, setShowMoreEntry] = useState<any>(null);
+    const [showMoreEntry, setShowMoreEntry] = useState<Entry | null>(null);
     const [isMoreOpen, setIsMoreOpen] = useState(false);
 
     // Paid Confirmation State
     const [isPaidDialogOpen, setIsPaidDialogOpen] = useState(false);
-    const [entryToMarkAsPaid, setEntryToMarkAsPaid] = useState<any>(null);
-
-    useEffect(() => {
-        const stored = localStorage.getItem("entries");
-        if (stored) {
-            setEntries(JSON.parse(stored));
-        }
-    }, [isDeleteDialogOpen]); // Refresh after delete confirmation if needed
+    const [entryToMarkAsPaid, setEntryToMarkAsPaid] = useState<Entry | null>(null);
 
     const handleDeleteEntry = (id: number) => {
         setEntryToDelete(id);
@@ -46,10 +40,7 @@ export default function Entries() {
 
     const confirmDelete = async () => {
         if (entryToDelete !== null) {
-            const newEntries = entries.filter(e => e.id !== entryToDelete);
-            setEntries(newEntries);
-            localStorage.setItem("entries", JSON.stringify(newEntries));
-
+            deleteEntry(entryToDelete);
             // Also cleanup PDF if it exists
             await deleteInvoice(entryToDelete);
 
@@ -59,7 +50,7 @@ export default function Entries() {
         }
     };
 
-    const handleMarkAsPaidClick = (entry: any) => {
+    const handleMarkAsPaidClick = (entry: Entry) => {
         setEntryToMarkAsPaid(entry);
         setIsPaidDialogOpen(true);
     };
@@ -67,9 +58,7 @@ export default function Entries() {
     const confirmMarkAsPaid = async () => {
         if (!entryToMarkAsPaid) return;
 
-        const newEntries = entries.map(e => (e.id === entryToMarkAsPaid.id ? { ...e, isPaid: true } : e));
-        setEntries(newEntries);
-        localStorage.setItem("entries", JSON.stringify(newEntries));
+        updateEntry(entryToMarkAsPaid.id, { isPaid: true });
 
         // Delete PDF once paid
         await deleteInvoice(entryToMarkAsPaid.id);
@@ -78,20 +67,25 @@ export default function Entries() {
         toast.success("Entry marked as paid");
     };
 
-    const handleShare = async (entry: any) => {
+    const handleShare = async (entry: Entry) => {
         try {
             let blob = await getInvoice(entry.id);
 
             // If not found, regenerate it!
             if (!blob) {
                 toast.info("Regenerating missing invoice...");
-                const settings = JSON.parse(localStorage.getItem("settings") || "{}");
+
+                const customer = useStore.getState().customers.find(c => c.name === entry.customerName);
+
                 blob = await generateInvoice({
                     customerName: entry.customerName,
                     items: entry.items,
                     total: entry.price,
-                    entryDate: entry.createdAt || new Date().toISOString(),
                     organizationName: settings.orgName,
+                    businessPhone: settings.phone,
+                    businessAddress: settings.address,
+                    customerPhone: customer?.phone,
+                    customerAddress: customer?.address,
                     bankDetails: {
                         bankName: settings.bankName,
                         accountNumber: settings.bankAccount,
@@ -99,6 +93,7 @@ export default function Entries() {
                     },
                     deliveryFee: entry.deliveryFee || 0,
                     discount: entry.discount || 0,
+                    invoiceId: entry.id,
                 });
                 // Save it back for future use
                 await saveInvoice(entry.id, blob);
@@ -165,11 +160,7 @@ export default function Entries() {
                     </div>
                     <div className="w-full sm:w-48">
                         <label className="text-sm font-medium mb-1.5 block text-foreground/80">Status</label>
-                        <Select
-                            value={filterStatus}
-                            // It's supposed to map the value to the display
-                            onValueChange={value => setFilterStatus(value ?? "all")}
-                        >
+                        <Select value={filterStatus} onValueChange={value => setFilterStatus(value ?? "all")}>
                             <SelectTrigger className="w-full h-11">
                                 <SelectValue />
                             </SelectTrigger>
@@ -190,7 +181,7 @@ export default function Entries() {
                             {filteredEntries.length} items currently in processing or completed.
                         </CardDescription>
                     </CardHeader>
-                    <CardContent className="pt-6">
+                    <CardContent className="pt-6 font-sans">
                         {filteredEntries.length === 0 ? (
                             <div className="text-center py-12 text-muted-foreground border-2 border-dashed rounded-lg">
                                 <p className="text-lg">No entries found matching your criteria</p>
@@ -247,7 +238,7 @@ export default function Entries() {
                                                     <Button
                                                         variant="link"
                                                         size="sm"
-                                                        className="h-6 px-1 text-xs text-primary"
+                                                        className="h-6 px-1 text-xs text-primary font-sans"
                                                         onClick={() => {
                                                             setShowMoreEntry(entry);
                                                             setIsMoreOpen(true);
@@ -272,7 +263,10 @@ export default function Entries() {
                                                             size="icon"
                                                             title="Mark as Paid"
                                                             className="h-10 w-10 text-green-600 hover:text-white hover:bg-green-600 hover:border-green-600"
-                                                            onClick={() => handleMarkAsPaidClick(entry)}
+                                                            onClick={e => {
+                                                                e.stopPropagation();
+                                                                handleMarkAsPaidClick(entry);
+                                                            }}
                                                         >
                                                             <Check className="w-4 h-4" />
                                                         </Button>
@@ -281,7 +275,10 @@ export default function Entries() {
                                                             size="icon"
                                                             title="Share Invoice"
                                                             className="h-10 w-10 text-primary hover:text-white hover:bg-primary hover:border-primary"
-                                                            onClick={() => handleShare(entry)}
+                                                            onClick={e => {
+                                                                e.stopPropagation();
+                                                                handleShare(entry);
+                                                            }}
                                                         >
                                                             <Share2 className="w-4 h-4" />
                                                         </Button>
@@ -291,7 +288,10 @@ export default function Entries() {
                                                     variant="outline"
                                                     size="icon"
                                                     className="h-10 w-10 text-muted-foreground hover:text-destructive hover:border-destructive"
-                                                    onClick={() => handleDeleteEntry(entry.id)}
+                                                    onClick={e => {
+                                                        e.stopPropagation();
+                                                        handleDeleteEntry(entry.id);
+                                                    }}
                                                 >
                                                     <Trash2 className="w-4 h-4" />
                                                 </Button>
@@ -317,7 +317,7 @@ export default function Entries() {
                         <DialogHeader>
                             <DialogTitle>Order Items - {showMoreEntry?.customerName}</DialogTitle>
                         </DialogHeader>
-                        <div className="space-y-4 py-4">
+                        <div className="space-y-4 py-4 font-sans">
                             <div className="border rounded-lg divide-y">
                                 {showMoreEntry?.items.map((item: any, idx: number) => (
                                     <div key={idx} className="p-3 flex justify-between items-center">
@@ -347,7 +347,7 @@ export default function Entries() {
                         <DialogHeader>
                             <DialogTitle>Confirm Payment</DialogTitle>
                         </DialogHeader>
-                        <div className="py-4">
+                        <div className="py-4 font-sans">
                             <p className="text-muted-foreground">
                                 Are you sure you want to mark the entry for{" "}
                                 <span className="font-bold text-foreground">"{entryToMarkAsPaid?.customerName}"</span>{" "}

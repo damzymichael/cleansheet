@@ -1,28 +1,20 @@
-"use client";
-
-import { useState, useEffect, useMemo } from "react";
-import { Plus, Trash2, Edit2, User, Phone, Mail, MapPin, Search, ChevronRight } from "lucide-react";
+import { useState } from "react";
+import { Plus, Trash2, Edit2, User, Phone, Search, ChevronRight } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import Layout from "@/components/layout";
 import { ConfirmDeleteDialog } from "@/components/confirm-delete-dialog";
-
-interface Customer {
-    id: number;
-    name: string;
-    phone?: string;
-    address?: string;
-}
+import { useStore } from "@/store/useStore";
+import type { Customer } from "@/lib/types";
 
 export default function Customers() {
     const navigate = useNavigate();
-    const [customers, setCustomers] = useState<Customer[]>([]);
-    const [entries, setEntries] = useState<any[]>([]);
+    const { customers, entries, addCustomer, updateCustomer, deleteCustomer } = useStore();
     const [showDialog, setShowDialog] = useState(false);
     const [editingId, setEditingId] = useState<number | null>(null);
     const [searchTerm, setSearchTerm] = useState("");
@@ -36,17 +28,6 @@ export default function Customers() {
     const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
     const [customerToDelete, setCustomerToDelete] = useState<number | null>(null);
 
-    useEffect(() => {
-        const storedCustomers = localStorage.getItem("customers");
-        if (storedCustomers) {
-            setCustomers(JSON.parse(storedCustomers));
-        }
-        const storedEntries = localStorage.getItem("entries");
-        if (storedEntries) {
-            setEntries(JSON.parse(storedEntries));
-        }
-    }, []);
-
     const handleAddOrEdit = () => {
         if (!formData.name) {
             alert("Please enter customer name");
@@ -54,18 +35,14 @@ export default function Customers() {
         }
 
         if (editingId) {
-            const updated = customers.map(c => (c.id === editingId ? { ...c, ...formData } : c));
-            setCustomers(updated);
-            localStorage.setItem("customers", JSON.stringify(updated));
+            updateCustomer(editingId, formData);
             setEditingId(null);
         } else {
             const newCustomer: Customer = {
                 id: Date.now(),
                 ...formData,
             };
-            const updated = [...customers, newCustomer];
-            setCustomers(updated);
-            localStorage.setItem("customers", JSON.stringify(updated));
+            addCustomer(newCustomer);
         }
 
         setFormData({ name: "", phone: "", address: "" });
@@ -91,9 +68,7 @@ export default function Customers() {
 
     const confirmDelete = () => {
         if (customerToDelete !== null) {
-            const updated = customers.filter(c => c.id !== customerToDelete);
-            setCustomers(updated);
-            localStorage.setItem("customers", JSON.stringify(updated));
+            deleteCustomer(customerToDelete);
             setIsDeleteDialogOpen(false);
             setCustomerToDelete(null);
         }
@@ -136,7 +111,7 @@ export default function Customers() {
                 </div>
 
                 {/* Filters */}
-                <div className="flex flex-col sm:flex-row gap-4 items-stretch sm:items-end">
+                <div className="flex flex-col sm:flex-row gap-4 items-stretch sm:items-end font-sans">
                     <div className="flex-1 relative">
                         <div className="relative">
                             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -154,7 +129,7 @@ export default function Customers() {
                 <div className="grid gap-4">
                     {filteredCustomers.length === 0 ? (
                         <div className="text-center py-20 text-muted-foreground border-2 border-dashed rounded-xl">
-                            <p className="text-lg">No customers found</p>
+                            <p className="text-lg font-sans">No customers found</p>
                         </div>
                     ) : (
                         filteredCustomers.map(customer => {
@@ -182,7 +157,7 @@ export default function Customers() {
                                             </div>
                                             <div className="flex flex-wrap gap-x-6 gap-y-1">
                                                 {customer.phone && (
-                                                    <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
+                                                    <div className="flex items-center gap-1.5 text-sm text-muted-foreground font-sans">
                                                         <Phone className="w-3.5 h-3.5" />
                                                         <span>{customer.phone}</span>
                                                     </div>

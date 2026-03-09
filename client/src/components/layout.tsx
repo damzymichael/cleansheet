@@ -1,9 +1,7 @@
-"use client";
-
 import React from "react";
 import { Link, useLocation } from "react-router-dom";
-import { Home, FileText, Shirt, Users, Shield, Menu, X, Settings } from "lucide-react";
-import { useState } from "react";
+import { Home, FileText, Shirt, Users, Shield, Menu, X, Settings, AlertCircle } from "lucide-react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { ModeToggle } from "@/components/mode-toggle";
@@ -15,8 +13,9 @@ import {
     DialogDescription,
     DialogFooter,
 } from "@/components/ui/dialog";
-import { AlertCircle } from "lucide-react";
-import { useEffect } from "react";
+import { usePullToRefresh } from "@/hooks/use-pull-to-refresh";
+import { SpinnerBadge } from "@/components/spinner-badge";
+import { useStore } from "@/store/useStore";
 
 const navItems = [
     { href: "/", label: "Dashboard", icon: Home },
@@ -27,37 +26,21 @@ const navItems = [
     { href: "/settings", label: "Settings", icon: Settings },
 ];
 
-import { usePullToRefresh } from "@/hooks/use-pull-to-refresh";
-import { SpinnerBadge } from "@/components/spinner-badge";
-
 export default function Layout({ children }: { children: React.ReactNode }) {
     const [sidebarOpen, setSidebarOpen] = useState(true);
     const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
     const [settingsMissing, setSettingsMissing] = useState(false);
     const { pathname } = useLocation();
+    const { settings } = useStore();
 
     useEffect(() => {
-        const stored = localStorage.getItem("settings");
-        if (!stored) {
-            // Only show prompt if not already on settings page
-            if (pathname !== "/settings") {
-                setSettingsMissing(true);
-            }
-        } else {
-            const settings = JSON.parse(stored);
-            if (!settings.orgName) {
-                if (pathname !== "/settings") {
-                    setSettingsMissing(true);
-                }
-            }
+        if (!settings.orgName && pathname !== "/settings") {
+            setSettingsMissing(true);
         }
-    }, [pathname]);
+    }, [pathname, settings.orgName]);
 
     // Pull to Refresh Implementation
     const handleRefresh = async () => {
-        // Here we simulate fetching updates from the server
-        // In a real app, you might refetch data via a global state manager or query client
-        // For a full PWA refresh (including service worker updates), reload is best
         return new Promise<void>(resolve => {
             setTimeout(() => {
                 window.location.reload();
@@ -106,7 +89,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                 </nav>
             </aside>
 
-            {/* Mobile Navigation Overlay - Same as before */}
+            {/* Mobile Navigation Overlay */}
             {mobileMenuOpen && (
                 <div
                     className="fixed inset-0 z-50 md:hidden bg-background/80 backdrop-blur-sm animate-in fade-in duration-200"
@@ -122,7 +105,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                                 <X className="w-5 h-5" />
                             </Button>
                         </div>
-                        <nav className="space-y-3">
+                        <nav className="space-y-3 font-sans">
                             {navItems.map(item => {
                                 const Icon = item.icon;
                                 const isActive = pathname === item.href;
@@ -148,7 +131,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
             )}
 
             {/* Main Content */}
-            <main className="flex-1 flex flex-col min-w-0 bg-background overflow-hidden">
+            <main className="flex-1 flex flex-col min-w-0 bg-background overflow-hidden font-sans">
                 <header className="border-b border-border px-4 md:px-8 py-4 flex items-center justify-between md:justify-end bg-background z-40 shrink-0">
                     <Button variant="ghost" size="icon" className="md:hidden" onClick={() => setMobileMenuOpen(true)}>
                         <Menu className="w-6 h-6" />
@@ -196,7 +179,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                             <AlertCircle className="w-5 h-5" />
                             <DialogTitle>Setup Required</DialogTitle>
                         </div>
-                        <DialogDescription className="text-base">
+                        <DialogDescription className="text-base font-sans">
                             Please set up your organization name and bank details in the settings page before creating
                             entries. These details are required for your invoices.
                         </DialogDescription>
@@ -207,7 +190,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                                 setSettingsMissing(false);
                                 window.location.href = "/settings";
                             }}
-                            className="w-full sm:w-auto"
+                            className="w-full sm:w-auto font-sans"
                         >
                             Go to Settings
                         </Button>

@@ -5,30 +5,31 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import Layout from "@/components/layout";
 import { toast } from "sonner";
-import { Building2, Landmark, CreditCard, User, Truck } from "lucide-react";
+import { Building2, Landmark, CreditCard, User, Truck, Phone, MapPin } from "lucide-react";
+import { useStore } from "@/store/useStore";
 
 export default function Settings() {
-    const [settings, setSettings] = useState({
-        orgName: "",
-        bankName: "",
-        bankAccount: "",
-        accountName: "",
-        defaultDeliveryFee: "0",
-    });
+    const { settings: storeSettings, updateSettings } = useStore();
+    const [settings, setSettings] = useState(storeSettings);
 
     useEffect(() => {
-        const stored = localStorage.getItem("settings");
-        if (stored) {
-            setSettings(JSON.parse(stored));
-        }
-    }, []);
+        setSettings(storeSettings);
+    }, [storeSettings]);
 
     const handleSave = () => {
         if (!settings.orgName) {
             toast.error("Organization name is required");
             return;
         }
-        localStorage.setItem("settings", JSON.stringify(settings));
+        if (!settings.phone) {
+            toast.error("Phone number is required");
+            return;
+        }
+        if (!settings.address) {
+            toast.error("Business address is required");
+            return;
+        }
+        updateSettings(settings);
         toast.success("Settings saved successfully");
     };
 
@@ -37,7 +38,9 @@ export default function Settings() {
             <div className="max-w-2xl mx-auto space-y-8 pb-10">
                 <div>
                     <h1 className="text-3xl font-bold text-foreground">Settings</h1>
-                    <p className="text-muted-foreground mt-1">Configure your organization and payment details</p>
+                    <p className="text-muted-foreground mt-1 font-sans">
+                        Configure your organization and payment details
+                    </p>
                 </div>
 
                 <div className="grid gap-6">
@@ -47,9 +50,11 @@ export default function Settings() {
                                 <Building2 className="w-5 h-5 text-primary" />
                                 Organization Details
                             </CardTitle>
-                            <CardDescription>This name will appear at the top of your invoices.</CardDescription>
+                            <CardDescription className="font-sans">
+                                This information will appear on your invoices.
+                            </CardDescription>
                         </CardHeader>
-                        <CardContent className="space-y-4">
+                        <CardContent className="space-y-4 font-sans">
                             <div className="space-y-2">
                                 <Label htmlFor="orgName">Organization Name *</Label>
                                 <Input
@@ -58,6 +63,32 @@ export default function Settings() {
                                     value={settings.orgName}
                                     onChange={e => setSettings({ ...settings, orgName: e.target.value })}
                                 />
+                            </div>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 font-sans">
+                                <div className="space-y-2">
+                                    <Label htmlFor="phone" className="flex items-center gap-1.5 font-sans">
+                                        <Phone className="w-3.5 h-3.5 text-muted-foreground" />
+                                        Business Phone *
+                                    </Label>
+                                    <Input
+                                        id="phone"
+                                        placeholder="e.g. +234 123 456 7890"
+                                        value={settings.phone}
+                                        onChange={e => setSettings({ ...settings, phone: e.target.value })}
+                                    />
+                                </div>
+                                <div className="space-y-2 font-sans">
+                                    <Label htmlFor="address" className="flex items-center gap-1.5 font-sans">
+                                        <MapPin className="w-3.5 h-3.5 text-muted-foreground" />
+                                        Business Address *
+                                    </Label>
+                                    <Input
+                                        id="address"
+                                        placeholder="Enter business address"
+                                        value={settings.address}
+                                        onChange={e => setSettings({ ...settings, address: e.target.value })}
+                                    />
+                                </div>
                             </div>
                         </CardContent>
                     </Card>
@@ -68,14 +99,14 @@ export default function Settings() {
                                 <Landmark className="w-5 h-5 text-primary" />
                                 Bank Details
                             </CardTitle>
-                            <CardDescription>
+                            <CardDescription className="font-sans">
                                 These details will be included in the invoice for payments.
                             </CardDescription>
                         </CardHeader>
-                        <CardContent className="space-y-4">
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                <div className="space-y-2">
-                                    <Label htmlFor="bankName" className="flex items-center gap-1.5">
+                        <CardContent className="space-y-4 font-sans">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 font-sans">
+                                <div className="space-y-2 font-sans">
+                                    <Label htmlFor="bankName" className="flex items-center gap-1.5 font-sans">
                                         <Landmark className="w-3.5 h-3.5 text-muted-foreground" />
                                         Bank Name
                                     </Label>
@@ -86,8 +117,8 @@ export default function Settings() {
                                         onChange={e => setSettings({ ...settings, bankName: e.target.value })}
                                     />
                                 </div>
-                                <div className="space-y-2">
-                                    <Label htmlFor="bankAccount" className="flex items-center gap-1.5">
+                                <div className="space-y-2 font-sans">
+                                    <Label htmlFor="bankAccount" className="flex items-center gap-1.5 font-sans">
                                         <CreditCard className="w-3.5 h-3.5 text-muted-foreground" />
                                         Account Number
                                     </Label>
@@ -99,8 +130,8 @@ export default function Settings() {
                                     />
                                 </div>
                             </div>
-                            <div className="space-y-2">
-                                <Label htmlFor="accountName" className="flex items-center gap-1.5">
+                            <div className="space-y-2 font-sans">
+                                <Label htmlFor="accountName" className="flex items-center gap-1.5 font-sans">
                                     <User className="w-3.5 h-3.5 text-muted-foreground" />
                                     Account Name
                                 </Label>
@@ -116,14 +147,16 @@ export default function Settings() {
 
                     <Card>
                         <CardHeader>
-                            <CardTitle className="flex items-center gap-2">
-                                <Truck className="w-5 h-5 text-primary" />
+                            <CardTitle className="flex items-center gap-2 font-sans">
+                                <Truck className="w-5 h-5 text-primary font-sans" />
                                 Delivery Settings
                             </CardTitle>
-                            <CardDescription>Default costs for delivery services.</CardDescription>
+                            <CardDescription className="font-sans">
+                                Default costs for delivery services.
+                            </CardDescription>
                         </CardHeader>
                         <CardContent>
-                            <div className="space-y-2">
+                            <div className="space-y-2 font-sans">
                                 <Label htmlFor="deliveryFee">Default Delivery Fee (₦)</Label>
                                 <Input
                                     id="deliveryFee"
@@ -136,8 +169,8 @@ export default function Settings() {
                         </CardContent>
                     </Card>
 
-                    <div className="flex justify-end pt-4">
-                        <Button onClick={handleSave} size="lg" className="px-8">
+                    <div className="flex justify-end pt-4 font-sans">
+                        <Button onClick={handleSave} size="lg" className="px-8 font-sans">
                             Save Settings
                         </Button>
                     </div>

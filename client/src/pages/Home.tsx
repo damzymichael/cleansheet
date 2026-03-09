@@ -1,66 +1,42 @@
-"use client";
-
-import { useState, useEffect } from "react";
+import { useMemo } from "react";
 import { Plus, Clock, CheckCircle2, AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import Layout from "@/components/layout";
-import { EntryForm } from "@/components/entry-form";
 import { useNavigate } from "react-router-dom";
+import { useStore } from "@/store/useStore";
 
 export default function Home() {
     const navigate = useNavigate();
-    const [entries, setEntries] = useState<any[]>([]);
-    const [showNewEntry, setShowNewEntry] = useState(false);
-    const [stats, setStats] = useState({
-        total: 0,
-        paid: 0,
-        unpaid: 0,
-        due: 0,
-    });
+    const { entries } = useStore();
 
-    useEffect(() => {
-        const stored = localStorage.getItem("entries");
-        if (stored) {
-            const parsed = JSON.parse(stored);
-            setEntries(parsed);
-            calculateStats(parsed);
-        }
-    }, []);
+    const stats = useMemo(() => {
+        const today = new Date();
+        const threeDays = new Date(today.getTime() + 3 * 24 * 60 * 60 * 1000);
 
-    const calculateStats = (entryList: any[]) => {
-        const stats = {
-            total: entryList.length,
-            paid: entryList.filter(e => e.isPaid).length,
-            unpaid: entryList.filter(e => !e.isPaid).length,
-            due: entryList.filter(e => {
+        return {
+            total: entries.length,
+            paid: entries.filter(e => e.isPaid).length,
+            unpaid: entries.filter(e => !e.isPaid).length,
+            due: entries.filter(e => {
                 const dueDate = new Date(e.dueDate);
-                const today = new Date();
-                const threeDays = new Date(today.getTime() + 3 * 24 * 60 * 60 * 1000);
                 return dueDate <= threeDays && dueDate >= today;
             }).length,
         };
-        setStats(stats);
-    };
+    }, [entries]);
 
-    const handleAddEntry = (entry: any) => {
-        const newEntries = [...entries, { ...entry, id: Date.now() }];
-        setEntries(newEntries);
-        localStorage.setItem("entries", JSON.stringify(newEntries));
-        calculateStats(newEntries);
-        setShowNewEntry(false);
-    };
-
-    const getUpcomingEntries = () => {
+    const upcomingEntries = useMemo(() => {
         const today = new Date();
         const threeDays = new Date(today.getTime() + 3 * 24 * 60 * 60 * 1000);
-        return entries.filter(e => {
-            const dueDate = new Date(e.dueDate);
-            return dueDate <= threeDays && dueDate >= today;
-        });
-    };
+        return entries
+            .filter(e => {
+                const dueDate = new Date(e.dueDate);
+                return dueDate <= threeDays && dueDate >= today;
+            })
+            .sort((a, b) => new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime());
+    }, [entries]);
+
     return (
         <Layout>
             <div className="space-y-8 pb-10">
@@ -134,58 +110,46 @@ export default function Home() {
                             Entries that are ready to pick up or approaching their due date
                         </CardDescription>
                     </CardHeader>
-                    <CardContent>
-                        {getUpcomingEntries().length === 0 ? (
+                    <CardContent className="font-sans">
+                        {upcomingEntries.length === 0 ? (
                             <div className="text-center py-8 text-muted-foreground">
                                 <p>No entries due in the next 3 days</p>
                             </div>
                         ) : (
                             <div className="space-y-4">
-                                {getUpcomingEntries()
-                                    .sort((a, b) => new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime())
-                                    .map(entry => (
-                                        <div
-                                            key={entry.id}
-                                            className="flex flex-col sm:flex-row sm:items-center justify-between p-4 border rounded-none gap-4"
-                                        >
-                                            <div className="space-y-1">
-                                                <p className="font-medium">{entry.customerName}</p>
-                                                <p className="text-xs md:text-sm text-muted-foreground">
-                                                    {entry.items.length} item(s) •{" "}
-                                                    {entry.items
-                                                        .map((i: any) => i.quantity)
-                                                        .reduce((a: number, b: number) => a + b, 0)}{" "}
-                                                    pieces
-                                                </p>
-                                            </div>
-                                            <div className="flex flex-row sm:flex-col items-center sm:items-end justify-between sm:justify-center gap-2">
-                                                <p className="text-sm font-medium order-2 sm:order-1">
-                                                    {new Date(entry.dueDate).toLocaleDateString()}
-                                                </p>
-                                                <div className="flex gap-2 order-1 sm:order-2">
-                                                    <Badge variant={entry.isPaid ? "default" : "secondary"}>
-                                                        {entry.isPaid ? "Paid" : "Unpaid"}
-                                                    </Badge>
-                                                    <Badge variant="outline">₦{entry.price}</Badge>
-                                                </div>
+                                {upcomingEntries.map(entry => (
+                                    <div
+                                        key={entry.id}
+                                        className="flex flex-col sm:flex-row sm:items-center justify-between p-4 border rounded-none gap-4"
+                                    >
+                                        <div className="space-y-1">
+                                            <p className="font-medium">{entry.customerName}</p>
+                                            <p className="text-xs md:text-sm text-muted-foreground">
+                                                {entry.items.length} item(s) •{" "}
+                                                {entry.items
+                                                    .map((i: any) => i.quantity)
+                                                    .reduce((a: number, b: number) => a + b, 0)}{" "}
+                                                pieces
+                                            </p>
+                                        </div>
+                                        <div className="flex flex-row sm:flex-col items-center sm:items-end justify-between sm:justify-center gap-2 font-sans">
+                                            <p className="text-sm font-medium order-2 sm:order-1 font-sans">
+                                                {new Date(entry.dueDate).toLocaleDateString()}
+                                            </p>
+                                            <div className="flex gap-2 order-1 sm:order-2">
+                                                <Badge variant={entry.isPaid ? "default" : "secondary"}>
+                                                    {entry.isPaid ? "Paid" : "Unpaid"}
+                                                </Badge>
+                                                <Badge variant="outline">₦{entry.price.toLocaleString()}</Badge>
                                             </div>
                                         </div>
-                                    ))}
+                                    </div>
+                                ))}
                             </div>
                         )}
                     </CardContent>
                 </Card>
             </div>
-
-            {/* New Entry Dialog */}
-            <Dialog open={showNewEntry} onOpenChange={setShowNewEntry}>
-                <DialogContent className="max-w-2xl">
-                    <DialogHeader>
-                        <DialogTitle>Create New Entry</DialogTitle>
-                    </DialogHeader>
-                    <EntryForm onSubmit={handleAddEntry} onCancel={() => setShowNewEntry(false)} />
-                </DialogContent>
-            </Dialog>
         </Layout>
     );
 }

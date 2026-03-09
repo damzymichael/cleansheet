@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -9,16 +9,9 @@ import { Plus, X } from "lucide-react";
 import { DatePicker } from "@/components/ui/date-picker";
 import { generateInvoice } from "@/lib/invoice";
 import { saveInvoice } from "@/lib/db";
-import { toast } from "sonner";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Landmark } from "lucide-react";
-
-interface Item {
-    clothId: string;
-    clothName: string;
-    quantity: number;
-    price: number;
-}
+import { useStore } from "@/store/useStore";
+import type { Customer, Cloth, EntryItem } from "@/lib/types";
 
 export function EntryForm({
     onSubmit,
@@ -29,45 +22,29 @@ export function EntryForm({
     onCancel: () => void;
     initialData?: any;
 }) {
+    const { customers, clothes, settings } = useStore();
+
     const [customerName, setCustomerName] = useState(initialData?.customerName || "");
-    const [items, setItems] = useState<Item[]>(initialData?.items || []);
+    const [items, setItems] = useState<EntryItem[]>(initialData?.items || []);
     const [dueDate, setDueDate] = useState<Date | undefined>(
         initialData?.dueDate ? new Date(initialData.dueDate) : undefined,
     );
     const [isPaid, setIsPaid] = useState(initialData?.isPaid || false);
-    const [price, setPrice] = useState(initialData?.price || "");
-    const [selectedCloth, setSelectedCloth] = useState<any>(null);
+    const [selectedCloth, setSelectedCloth] = useState<Cloth | null>(null);
     const [quantity, setQuantity] = useState("");
     const [clothOpen, setClothOpen] = useState(false);
     const [customerOpen, setCustomerOpen] = useState(false);
 
-    // Settings for defaults
-    const settings = useMemo(() => {
-        const stored = localStorage.getItem("settings");
-        return stored ? JSON.parse(stored) : { defaultDeliveryFee: "0" };
-    }, []);
-
-    const [serviceType, setServiceType] = useState<"pickup" | "delivery">("pickup");
-    const [deliveryFee, setDeliveryFee] = useState(settings.defaultDeliveryFee || "0");
-    const [discount, setDiscount] = useState("0");
-
-    type Customer = { address: string; email: string; id: number; name: string; phone: string };
-
-    // Get stored data
-    const customers: Customer[] = useMemo(() => {
-        const stored = localStorage.getItem("customers");
-        return stored ? JSON.parse(stored) : [];
-    }, []);
-
-    const clothes = useMemo(() => {
-        const stored = localStorage.getItem("clothes");
-        return stored ? JSON.parse(stored) : [];
-    }, []);
+    const [serviceType, setServiceType] = useState<"pickup" | "delivery">(initialData?.serviceType || "pickup");
+    const [deliveryFee, setDeliveryFee] = useState(
+        initialData?.deliveryFee?.toString() || settings.defaultDeliveryFee || "0",
+    );
+    const [discount, setDiscount] = useState(initialData?.discount?.toString() || "0");
 
     const handleAddItem = () => {
         if (!selectedCloth || !quantity) return;
-        const newItem: Item = {
-            clothId: selectedCloth.id,
+        const newItem: EntryItem = {
+            clothId: selectedCloth.id.toString(),
             clothName: selectedCloth.name,
             quantity: parseInt(quantity),
             price: selectedCloth.price * parseInt(quantity),
@@ -82,9 +59,12 @@ export function EntryForm({
         setItems(items.filter((_, i) => i !== index));
     };
 
+    const calculateSubtotal = () => {
+        return items.reduce((sum, item) => sum + item.price, 0);
+    };
+
     const calculateTotalPrice = () => {
-        const itemsTotal = items.reduce((sum, item) => sum + item.price, 0);
-        const subtotal = +price || itemsTotal;
+        const subtotal = calculateSubtotal();
         const discountAmount = (parseFloat(discount) / 100) * subtotal;
         const totalAfterDiscount = subtotal - discountAmount;
         const finalTotal = totalAfterDiscount + (serviceType === "delivery" ? parseFloat(deliveryFee) : 0);
@@ -98,21 +78,22 @@ export function EntryForm({
         }
 
         const trimmedName = customerName.trim();
-        const exists = customers.some((c: any) => c.name.trim().toLowerCase() === trimmedName.toLowerCase());
+        const customer = customers.find(c => c.name.trim().toLowerCase() === trimmedName.toLowerCase());
 
-        if (!exists) {
+        if (!customer) {
             alert("Customer not found. Please select an existing customer.");
             return;
         }
 
         const entryId = initialData?.id || Date.now();
+        const finalPrice = calculateTotalPrice();
         const entryData = {
             id: entryId,
             customerName: trimmedName,
             items,
             dueDate: dueDate.toISOString(),
             isPaid,
-            price: parseFloat(calculateTotalPrice().toString()),
+            price: finalPrice,
             createdAt: initialData?.createdAt || new Date().toISOString(),
             serviceType,
             deliveryFee: serviceType === "delivery" ? parseFloat(deliveryFee) : 0,
@@ -125,16 +106,20 @@ export function EntryForm({
                 const pdfBlob = await generateInvoice({
                     customerName: trimmedName,
                     items,
-                    total: entryData.price,
-                    entryDate: entryData.createdAt,
+                    total: finalPrice,
                     organizationName: settings.orgName,
+                    businessPhone: settings.phone,
+                    businessAddress: settings.address,
+                    customerPhone: customer.phone,
+                    customerAddress: customer.address,
                     bankDetails: {
                         bankName: settings.bankName,
                         accountNumber: settings.bankAccount,
                         accountName: settings.accountName,
                     },
-                    deliveryFee: serviceType === "delivery" ? parseFloat(deliveryFee) : 0,
-                    discount: parseFloat(discount),
+                    deliveryFee: entryData.deliveryFee,
+                    discount: entryData.discount,
+                    invoiceId: entryId,
                 });
                 await saveInvoice(entryId, pdfBlob);
             } catch (err) {
@@ -144,6 +129,7 @@ export function EntryForm({
 
         onSubmit(entryData);
     };
+
     return (
         <div className="space-y-6">
             {/* Customer Selection */}
@@ -161,7 +147,7 @@ export function EntryForm({
                             <CommandList>
                                 <CommandEmpty>No customers found.</CommandEmpty>
                                 <CommandGroup>
-                                    {customers.map((customer: Customer) => (
+                                    {customers.map(customer => (
                                         <CommandItem
                                             key={customer.id}
                                             value={customer.name}
@@ -192,7 +178,7 @@ export function EntryForm({
                                         {item.quantity}x {item.clothName}
                                     </span>
                                     <div className="flex items-center gap-2">
-                                        <span className="text-sm font-medium">₦{item.price}</span>
+                                        <span className="text-sm font-medium">₦{item.price.toLocaleString()}</span>
                                         <Button variant="ghost" size="icon" onClick={() => handleRemoveItem(idx)}>
                                             <X className="w-4 h-4" />
                                         </Button>
@@ -221,7 +207,7 @@ export function EntryForm({
                                         <CommandList>
                                             <CommandEmpty>No clothes found</CommandEmpty>
                                             <CommandGroup>
-                                                {clothes.map((cloth: any) => (
+                                                {clothes.map(cloth => (
                                                     <CommandItem
                                                         key={cloth.id}
                                                         value={cloth.name}
@@ -230,7 +216,7 @@ export function EntryForm({
                                                             setClothOpen(false);
                                                         }}
                                                     >
-                                                        {cloth.name} (₦{cloth.price})
+                                                        {cloth.name} (₦{cloth.price.toLocaleString()})
                                                     </CommandItem>
                                                 ))}
                                             </CommandGroup>
@@ -262,69 +248,65 @@ export function EntryForm({
                 <DatePicker date={dueDate} setDate={setDueDate} />
             </div>
 
-            {/* Price */}
+            {/* Pricing Summary */}
             <div className="space-y-4 pt-4 border-t">
-                <div className="space-y-2">
-                    <Label>Subtotal Price (Auto-calculated)</Label>
-                    <Input
-                        type="number"
-                        placeholder="Override subtotal"
-                        value={price}
-                        onChange={e => setPrice(e.target.value)}
-                        className="text-right"
-                    />
-                </div>
-
-                <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                        <Label>Service Type</Label>
-                        <Select
-                            value={serviceType}
-                            onValueChange={(val: any) => {
-                                setServiceType(val);
-                                if (val === "pickup") setDeliveryFee("0");
-                                else setDeliveryFee(settings.defaultDeliveryFee || "0");
-                            }}
-                        >
-                            <SelectTrigger>
-                                <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                                <SelectItem value="pickup">Pickup</SelectItem>
-                                <SelectItem value="delivery">Delivery</SelectItem>
-                            </SelectContent>
-                        </Select>
+                <div className="bg-muted/30 p-4 rounded-lg space-y-2">
+                    <div className="flex justify-between text-sm">
+                        <span className="text-muted-foreground">Subtotal</span>
+                        <span>₦{calculateSubtotal().toLocaleString()}</span>
                     </div>
 
-                    {serviceType === "delivery" && (
+                    <div className="grid grid-cols-2 gap-4">
                         <div className="space-y-2">
-                            <Label>Delivery Fee (₦)</Label>
-                            <Input
-                                type="number"
-                                value={deliveryFee}
-                                onChange={e => setDeliveryFee(e.target.value)}
-                                className="text-right"
-                            />
+                            <Label className="text-xs">Service Type</Label>
+                            <Select
+                                value={serviceType}
+                                onValueChange={(val: any) => {
+                                    setServiceType(val);
+                                    if (val === "pickup") setDeliveryFee("0");
+                                    else setDeliveryFee(settings.defaultDeliveryFee || "0");
+                                }}
+                            >
+                                <SelectTrigger className="h-9 text-xs">
+                                    <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="pickup">Pickup</SelectItem>
+                                    <SelectItem value="delivery">Delivery</SelectItem>
+                                </SelectContent>
+                            </Select>
                         </div>
-                    )}
+
+                        {serviceType === "delivery" && (
+                            <div className="space-y-2">
+                                <Label className="text-xs">Delivery Fee (₦)</Label>
+                                <Input
+                                    type="number"
+                                    value={deliveryFee}
+                                    onChange={e => setDeliveryFee(e.target.value)}
+                                    className="h-9 text-right text-xs"
+                                />
+                            </div>
+                        )}
+                    </div>
+
+                    <div className="space-y-2">
+                        <Label className="text-xs">Discount Percentage (%)</Label>
+                        <Input
+                            type="number"
+                            placeholder="0"
+                            value={discount}
+                            onChange={e => setDiscount(e.target.value)}
+                            className="h-9 text-right text-xs"
+                            min="0"
+                            max="100"
+                        />
+                    </div>
                 </div>
 
-                <div className="space-y-2">
-                    <Label>Discount Percentage (%)</Label>
-                    <Input
-                        type="number"
-                        placeholder="0"
-                        value={discount}
-                        onChange={e => setDiscount(e.target.value)}
-                        className="text-right"
-                        min="0"
-                        max="100"
-                    />
-                </div>
-
-                <div className="bg-muted/50 p-4 rounded-lg flex justify-between items-center">
-                    <span className="font-semibold">Final Total</span>
-                    <span className="text-xl font-bold text-primary">₦{calculateTotalPrice().toLocaleString()}</span>
+                <div className="bg-primary/5 p-4 rounded-lg flex justify-between items-center border border-primary/10">
+                    <span className="font-bold">Total Amount</span>
+                    <span className="text-2xl font-black text-primary">₦{calculateTotalPrice().toLocaleString()}</span>
                 </div>
             </div>
 

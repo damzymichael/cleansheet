@@ -1,24 +1,17 @@
-"use client";
-
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { Plus, Trash2, Edit2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import Layout from "@/components/layout";
-
 import { ConfirmDeleteDialog } from "@/components/confirm-delete-dialog";
-
-interface Cloth {
-    id: number;
-    name: string;
-    price: number;
-}
+import { useStore } from "@/store/useStore";
+import type { Cloth } from "@/lib/types";
 
 export default function Clothes() {
-    const [clothes, setClothes] = useState<Cloth[]>([]);
+    const { clothes, addCloth, updateCloth, deleteCloth } = useStore();
     const [showDialog, setShowDialog] = useState(false);
     const [editingId, setEditingId] = useState<number | null>(null);
     const [formData, setFormData] = useState({ name: "", price: "" });
@@ -27,13 +20,6 @@ export default function Clothes() {
     const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
     const [clothToDelete, setClothToDelete] = useState<number | null>(null);
 
-    useEffect(() => {
-        const stored = localStorage.getItem("clothes");
-        if (stored) {
-            setClothes(JSON.parse(stored));
-        }
-    }, []);
-
     const handleAddOrEdit = () => {
         if (!formData.name || !formData.price) {
             alert("Please fill in all fields");
@@ -41,11 +27,10 @@ export default function Clothes() {
         }
 
         if (editingId) {
-            const updated = clothes.map(c =>
-                c.id === editingId ? { ...c, name: formData.name, price: parseFloat(formData.price) } : c,
-            );
-            setClothes(updated);
-            localStorage.setItem("clothes", JSON.stringify(updated));
+            updateCloth(editingId, {
+                name: formData.name,
+                price: parseFloat(formData.price),
+            });
             setEditingId(null);
         } else {
             const newCloth: Cloth = {
@@ -53,9 +38,7 @@ export default function Clothes() {
                 name: formData.name,
                 price: parseFloat(formData.price),
             };
-            const updated = [...clothes, newCloth];
-            setClothes(updated);
-            localStorage.setItem("clothes", JSON.stringify(updated));
+            addCloth(newCloth);
         }
 
         setFormData({ name: "", price: "" });
@@ -75,9 +58,7 @@ export default function Clothes() {
 
     const confirmDelete = () => {
         if (clothToDelete !== null) {
-            const updated = clothes.filter(c => c.id !== clothToDelete);
-            setClothes(updated);
-            localStorage.setItem("clothes", JSON.stringify(updated));
+            deleteCloth(clothToDelete);
             setIsDeleteDialogOpen(false);
             setClothToDelete(null);
         }
@@ -100,16 +81,16 @@ export default function Clothes() {
                             Add and manage clothing types and pricing
                         </p>
                     </div>
-                    <Button onClick={handleNewClick} className="gap-2 w-full sm:w-auto" size="lg">
+                    <Button onClick={handleNewClick} className="gap-2 w-full sm:w-auto font-sans" size="lg">
                         <Plus className="w-5 h-5" />
                         Add Cloth Type
                     </Button>
                 </div>
 
                 {/* Grid of Clothes */}
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 font-sans">
                     {clothes.length === 0 ? (
-                        <div className="col-span-full text-center py-16 text-muted-foreground border-2 border-dashed rounded-xl">
+                        <div className="col-span-full text-center py-16 text-muted-foreground border-2 border-dashed rounded-xl font-sans">
                             <p className="text-lg">No clothes added yet. Create one to get started.</p>
                         </div>
                     ) : (
@@ -118,11 +99,11 @@ export default function Clothes() {
                                 key={cloth.id}
                                 className="border-border shadow-sm hover:shadow-md transition-shadow duration-200 overflow-hidden group"
                             >
-                                <CardHeader className="bg-muted/30 border-b pb-4">
-                                    <CardTitle className="text-lg">{cloth.name}</CardTitle>
+                                <CardHeader className="bg-muted/30 border-b pb-4 mt-0">
+                                    <CardTitle className="text-lg font-sans">{cloth.name}</CardTitle>
                                 </CardHeader>
                                 <CardContent className="pt-6 space-y-6">
-                                    <div className="flex items-baseline justify-between">
+                                    <div className="flex items-baseline justify-between font-sans">
                                         <p className="text-sm font-medium text-muted-foreground">Default Price</p>
                                         <p className="text-3xl font-bold text-foreground">
                                             ₦{cloth.price.toLocaleString()}
@@ -131,7 +112,7 @@ export default function Clothes() {
                                     <div className="flex gap-2">
                                         <Button
                                             variant="outline"
-                                            className="flex-1 hover:text-primary hover:border-primary"
+                                            className="flex-1 hover:text-primary hover:border-primary font-sans"
                                             onClick={() => handleEdit(cloth)}
                                         >
                                             <Edit2 className="w-4 h-4 mr-2" />
@@ -139,7 +120,7 @@ export default function Clothes() {
                                         </Button>
                                         <Button
                                             variant="outline"
-                                            className="flex-1 hover:text-destructive hover:border-destructive"
+                                            className="flex-1 hover:text-destructive hover:border-destructive font-sans"
                                             onClick={() => handleDeleteClick(cloth.id)}
                                         >
                                             <Trash2 className="w-4 h-4 mr-2" />
@@ -160,7 +141,6 @@ export default function Clothes() {
                     description={`Are you sure you want to delete this clothing type? This will remove it from the list of available items for new entries.`}
                 />
             </div>
-            {/* ... dialog content ... */}
 
             {/* Add/Edit Dialog */}
             <Dialog open={showDialog} onOpenChange={setShowDialog}>
@@ -168,7 +148,7 @@ export default function Clothes() {
                     <DialogHeader>
                         <DialogTitle>{editingId ? "Edit Clothing Type" : "Add New Clothing Type"}</DialogTitle>
                     </DialogHeader>
-                    <div className="space-y-4">
+                    <div className="space-y-4 font-sans">
                         <div className="space-y-2">
                             <Label htmlFor="name">Clothing Name</Label>
                             <Input
@@ -189,7 +169,7 @@ export default function Clothes() {
                                 onChange={e => setFormData({ ...formData, price: e.target.value })}
                             />
                         </div>
-                        <div className="flex gap-2 justify-end">
+                        <div className="flex gap-2 justify-end pt-4">
                             <Button variant="outline" onClick={() => setShowDialog(false)}>
                                 Cancel
                             </Button>
