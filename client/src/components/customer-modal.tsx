@@ -16,7 +16,6 @@ export function CustomerModal({ isOpen, onOpenChange, onSuccess, initialName = "
     const [formData, setFormData] = useState({
         name: initialName,
         phone: "",
-        email: "",
         address: "",
     });
 
@@ -37,7 +36,7 @@ export function CustomerModal({ isOpen, onOpenChange, onSuccess, initialName = "
         localStorage.setItem("customers", JSON.stringify(updated));
 
         onSuccess(newCustomer);
-        setFormData({ name: "", phone: "", email: "", address: "" });
+        setFormData({ name: "", phone: "", address: "" });
         onOpenChange(false);
     };
 
@@ -60,30 +59,16 @@ export function CustomerModal({ isOpen, onOpenChange, onSuccess, initialName = "
                             onChange={e => setFormData({ ...formData, name: e.target.value })}
                         />
                     </div>
-                    <div className="grid grid-cols-2 gap-4">
-                        <div className="space-y-2">
-                            <Label htmlFor="phone" className="text-sm font-semibold">
-                                Phone Number
-                            </Label>
-                            <Input
-                                id="phone"
-                                placeholder="080 123 4567"
-                                value={formData.phone}
-                                onChange={e => setFormData({ ...formData, phone: e.target.value })}
-                            />
-                        </div>
-                        <div className="space-y-2">
-                            <Label htmlFor="email" className="text-sm font-semibold">
-                                Email
-                            </Label>
-                            <Input
-                                id="email"
-                                type="email"
-                                placeholder="customer@email.com"
-                                value={formData.email}
-                                onChange={e => setFormData({ ...formData, email: e.target.value })}
-                            />
-                        </div>
+                    <div className="space-y-2">
+                        <Label htmlFor="phone" className="text-sm font-semibold">
+                            Phone Number
+                        </Label>
+                        <Input
+                            id="phone"
+                            placeholder="080 123 4567"
+                            value={formData.phone}
+                            onChange={e => setFormData({ ...formData, phone: e.target.value })}
+                        />
                     </div>
                     <div className="space-y-2">
                         <Label htmlFor="address" className="text-sm font-semibold">

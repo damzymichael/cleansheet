@@ -12,6 +12,7 @@ import Staff from "./pages/Staff";
 import NewEntry from "./pages/NewEntry";
 
 import CustomerDetail from "./pages/CustomerDetail";
+import Settings from "./pages/Settings";
 
 import { Toaster } from "sonner";
 
@@ -32,6 +33,7 @@ function App() {
                     <Route path="customers" element={<Customers />} />
                     <Route path="customers/:id" element={<CustomerDetail />} />
                     <Route path="staff" element={<Staff />} />
+                    <Route path="settings" element={<Settings />} />
                     <Route path="login" element={<Login />} />
                     <Route path="signup" element={<Signup />} />
 

@@ -2,11 +2,21 @@
 
 import React from "react";
 import { Link, useLocation } from "react-router-dom";
-import { Home, FileText, Shirt, Users, Shield, Menu, X } from "lucide-react";
+import { Home, FileText, Shirt, Users, Shield, Menu, X, Settings } from "lucide-react";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { ModeToggle } from "@/components/mode-toggle";
+import {
+    Dialog,
+    DialogContent,
+    DialogHeader,
+    DialogTitle,
+    DialogDescription,
+    DialogFooter,
+} from "@/components/ui/dialog";
+import { AlertCircle } from "lucide-react";
+import { useEffect } from "react";
 
 const navItems = [
     { href: "/", label: "Dashboard", icon: Home },
@@ -14,6 +24,7 @@ const navItems = [
     { href: "/clothes", label: "Clothes", icon: Shirt },
     { href: "/customers", label: "Customers", icon: Users },
     { href: "/staff", label: "Staff", icon: Shield },
+    { href: "/settings", label: "Settings", icon: Settings },
 ];
 
 import { usePullToRefresh } from "@/hooks/use-pull-to-refresh";
@@ -22,7 +33,25 @@ import { SpinnerBadge } from "@/components/spinner-badge";
 export default function Layout({ children }: { children: React.ReactNode }) {
     const [sidebarOpen, setSidebarOpen] = useState(true);
     const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+    const [settingsMissing, setSettingsMissing] = useState(false);
     const { pathname } = useLocation();
+
+    useEffect(() => {
+        const stored = localStorage.getItem("settings");
+        if (!stored) {
+            // Only show prompt if not already on settings page
+            if (pathname !== "/settings") {
+                setSettingsMissing(true);
+            }
+        } else {
+            const settings = JSON.parse(stored);
+            if (!settings.orgName) {
+                if (pathname !== "/settings") {
+                    setSettingsMissing(true);
+                }
+            }
+        }
+    }, [pathname]);
 
     // Pull to Refresh Implementation
     const handleRefresh = async () => {
@@ -158,6 +187,33 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                     </div>
                 </div>
             </main>
+
+            {/* Settings Required Prompt */}
+            <Dialog open={settingsMissing} onOpenChange={setSettingsMissing}>
+                <DialogContent>
+                    <DialogHeader>
+                        <div className="flex items-center gap-2 text-destructive mb-2">
+                            <AlertCircle className="w-5 h-5" />
+                            <DialogTitle>Setup Required</DialogTitle>
+                        </div>
+                        <DialogDescription className="text-base">
+                            Please set up your organization name and bank details in the settings page before creating
+                            entries. These details are required for your invoices.
+                        </DialogDescription>
+                    </DialogHeader>
+                    <DialogFooter>
+                        <Button
+                            onClick={() => {
+                                setSettingsMissing(false);
+                                window.location.href = "/settings";
+                            }}
+                            className="w-full sm:w-auto"
+                        >
+                            Go to Settings
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
         </div>
     );
 }

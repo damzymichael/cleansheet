@@ -16,7 +16,6 @@ interface Customer {
     id: number;
     name: string;
     phone?: string;
-    email?: string;
     address?: string;
 }
 
@@ -30,7 +29,6 @@ export default function Customers() {
     const [formData, setFormData] = useState({
         name: "",
         phone: "",
-        email: "",
         address: "",
     });
 
@@ -70,7 +68,7 @@ export default function Customers() {
             localStorage.setItem("customers", JSON.stringify(updated));
         }
 
-        setFormData({ name: "", phone: "", email: "", address: "" });
+        setFormData({ name: "", phone: "", address: "" });
         setShowDialog(false);
     };
 
@@ -79,7 +77,6 @@ export default function Customers() {
         setFormData({
             name: customer.name,
             phone: customer.phone || "",
-            email: customer.email || "",
             address: customer.address || "",
         });
         setEditingId(customer.id);
@@ -103,7 +100,7 @@ export default function Customers() {
     };
 
     const handleNewClick = () => {
-        setFormData({ name: "", phone: "", email: "", address: "" });
+        setFormData({ name: "", phone: "", address: "" });
         setEditingId(null);
         setShowDialog(true);
     };
@@ -190,12 +187,6 @@ export default function Customers() {
                                                         <span>{customer.phone}</span>
                                                     </div>
                                                 )}
-                                                {customer.email && (
-                                                    <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
-                                                        <Mail className="w-3.5 h-3.5" />
-                                                        <span className="truncate">{customer.email}</span>
-                                                    </div>
-                                                )}
                                             </div>
                                         </div>
                                     </div>
@@ -272,30 +263,16 @@ export default function Customers() {
                                 onChange={e => setFormData({ ...formData, name: e.target.value })}
                             />
                         </div>
-                        <div className="grid grid-cols-2 gap-4">
-                            <div className="space-y-2">
-                                <Label htmlFor="phone" className="text-sm font-semibold">
-                                    Phone Number
-                                </Label>
-                                <Input
-                                    id="phone"
-                                    placeholder="080 123 4567"
-                                    value={formData.phone}
-                                    onChange={e => setFormData({ ...formData, phone: e.target.value })}
-                                />
-                            </div>
-                            <div className="space-y-2">
-                                <Label htmlFor="email" className="text-sm font-semibold">
-                                    Email
-                                </Label>
-                                <Input
-                                    id="email"
-                                    type="email"
-                                    placeholder="customer@email.com"
-                                    value={formData.email}
-                                    onChange={e => setFormData({ ...formData, email: e.target.value })}
-                                />
-                            </div>
+                        <div className="space-y-2">
+                            <Label htmlFor="phone" className="text-sm font-semibold">
+                                Phone Number
+                            </Label>
+                            <Input
+                                id="phone"
+                                placeholder="080 123 4567"
+                                value={formData.phone}
+                                onChange={e => setFormData({ ...formData, phone: e.target.value })}
+                            />
                         </div>
                         <div className="space-y-2">
                             <Label htmlFor="address" className="text-sm font-semibold">

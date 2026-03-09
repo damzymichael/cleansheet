@@ -8,7 +8,7 @@ export default function NewEntry() {
     const handleAddEntry = (entry: any) => {
         const stored = localStorage.getItem("entries");
         const entries = stored ? JSON.parse(stored) : [];
-        const newEntries = [...entries, { ...entry, id: Date.now() }];
+        const newEntries = [...entries, entry];
         localStorage.setItem("entries", JSON.stringify(newEntries));
         navigate("/entries");
     };

@@ -85,11 +85,20 @@ export default function Entries() {
             // If not found, regenerate it!
             if (!blob) {
                 toast.info("Regenerating missing invoice...");
+                const settings = JSON.parse(localStorage.getItem("settings") || "{}");
                 blob = await generateInvoice({
                     customerName: entry.customerName,
                     items: entry.items,
                     total: entry.price,
                     entryDate: entry.createdAt || new Date().toISOString(),
+                    organizationName: settings.orgName,
+                    bankDetails: {
+                        bankName: settings.bankName,
+                        accountNumber: settings.bankAccount,
+                        accountName: settings.accountName,
+                    },
+                    deliveryFee: entry.deliveryFee || 0,
+                    discount: entry.discount || 0,
                 });
                 // Save it back for future use
                 await saveInvoice(entry.id, blob);
@@ -104,7 +113,6 @@ export default function Entries() {
                     text: `Laundry invoice for ${entry.customerName} - ₦${entry.price.toLocaleString()}`,
                 });
             } else {
-                console.log("No navigator.share");
                 const url = URL.createObjectURL(blob);
                 window.open(url);
                 toast.info("Opening invoice in new tab (Sharing not supported)");

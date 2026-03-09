@@ -10,7 +10,6 @@ interface Customer {
     id: number;
     name: string;
     phone?: string;
-    email?: string;
     address?: string;
 }
 
@@ -93,17 +92,6 @@ export default function CustomerDetail() {
                                                 Phone
                                             </p>
                                             <p className="text-foreground">{customer.phone || "No phone provided"}</p>
-                                        </div>
-                                    </div>
-                                    <div className="flex items-start gap-3">
-                                        <Mail className="w-4 h-4 text-muted-foreground mt-1" />
-                                        <div>
-                                            <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider">
-                                                Email
-                                            </p>
-                                            <p className="text-foreground break-all">
-                                                {customer.email || "No email provided"}
-                                            </p>
                                         </div>
                                     </div>
                                     <div className="flex items-start gap-3">

@@ -10,6 +10,8 @@ import { DatePicker } from "@/components/ui/date-picker";
 import { generateInvoice } from "@/lib/invoice";
 import { saveInvoice } from "@/lib/db";
 import { toast } from "sonner";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Landmark } from "lucide-react";
 
 interface Item {
     clothId: string;
@@ -38,6 +40,16 @@ export function EntryForm({
     const [quantity, setQuantity] = useState("");
     const [clothOpen, setClothOpen] = useState(false);
     const [customerOpen, setCustomerOpen] = useState(false);
+
+    // Settings for defaults
+    const settings = useMemo(() => {
+        const stored = localStorage.getItem("settings");
+        return stored ? JSON.parse(stored) : { defaultDeliveryFee: "0" };
+    }, []);
+
+    const [serviceType, setServiceType] = useState<"pickup" | "delivery">("pickup");
+    const [deliveryFee, setDeliveryFee] = useState(settings.defaultDeliveryFee || "0");
+    const [discount, setDiscount] = useState("0");
 
     type Customer = { address: string; email: string; id: number; name: string; phone: string };
 
@@ -72,7 +84,11 @@ export function EntryForm({
 
     const calculateTotalPrice = () => {
         const itemsTotal = items.reduce((sum, item) => sum + item.price, 0);
-        return +price || itemsTotal;
+        const subtotal = +price || itemsTotal;
+        const discountAmount = (parseFloat(discount) / 100) * subtotal;
+        const totalAfterDiscount = subtotal - discountAmount;
+        const finalTotal = totalAfterDiscount + (serviceType === "delivery" ? parseFloat(deliveryFee) : 0);
+        return finalTotal;
     };
 
     const handleSubmit = async () => {
@@ -98,6 +114,9 @@ export function EntryForm({
             isPaid,
             price: parseFloat(calculateTotalPrice().toString()),
             createdAt: initialData?.createdAt || new Date().toISOString(),
+            serviceType,
+            deliveryFee: serviceType === "delivery" ? parseFloat(deliveryFee) : 0,
+            discount: parseFloat(discount),
         };
 
         // If not paid, generate and save invoice in background
@@ -108,6 +127,14 @@ export function EntryForm({
                     items,
                     total: entryData.price,
                     entryDate: entryData.createdAt,
+                    organizationName: settings.orgName,
+                    bankDetails: {
+                        bankName: settings.bankName,
+                        accountNumber: settings.bankAccount,
+                        accountName: settings.accountName,
+                    },
+                    deliveryFee: serviceType === "delivery" ? parseFloat(deliveryFee) : 0,
+                    discount: parseFloat(discount),
                 });
                 await saveInvoice(entryId, pdfBlob);
             } catch (err) {
@@ -236,16 +263,69 @@ export function EntryForm({
             </div>
 
             {/* Price */}
-            <div className="space-y-2">
-                <Label>Price (Auto-calculated)</Label>
-                <Input
-                    type="number"
-                    placeholder="Override price"
-                    value={price}
-                    onChange={e => setPrice(e.target.value)}
-                    className="text-right"
-                />
-                <p className="text-xs text-muted-foreground">Total: ₦{(calculateTotalPrice() as number).toFixed(2)}</p>
+            <div className="space-y-4 pt-4 border-t">
+                <div className="space-y-2">
+                    <Label>Subtotal Price (Auto-calculated)</Label>
+                    <Input
+                        type="number"
+                        placeholder="Override subtotal"
+                        value={price}
+                        onChange={e => setPrice(e.target.value)}
+                        className="text-right"
+                    />
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                        <Label>Service Type</Label>
+                        <Select
+                            value={serviceType}
+                            onValueChange={(val: any) => {
+                                setServiceType(val);
+                                if (val === "pickup") setDeliveryFee("0");
+                                else setDeliveryFee(settings.defaultDeliveryFee || "0");
+                            }}
+                        >
+                            <SelectTrigger>
+                                <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="pickup">Pickup</SelectItem>
+                                <SelectItem value="delivery">Delivery</SelectItem>
+                            </SelectContent>
+                        </Select>
+                    </div>
+
+                    {serviceType === "delivery" && (
+                        <div className="space-y-2">
+                            <Label>Delivery Fee (₦)</Label>
+                            <Input
+                                type="number"
+                                value={deliveryFee}
+                                onChange={e => setDeliveryFee(e.target.value)}
+                                className="text-right"
+                            />
+                        </div>
+                    )}
+                </div>
+
+                <div className="space-y-2">
+                    <Label>Discount Percentage (%)</Label>
+                    <Input
+                        type="number"
+                        placeholder="0"
+                        value={discount}
+                        onChange={e => setDiscount(e.target.value)}
+                        className="text-right"
+                        min="0"
+                        max="100"
+                    />
+                </div>
+
+                <div className="bg-muted/50 p-4 rounded-lg flex justify-between items-center">
+                    <span className="font-semibold">Final Total</span>
+                    <span className="text-xl font-bold text-primary">₦{calculateTotalPrice().toLocaleString()}</span>
+                </div>
             </div>
 
             {/* Payment Status */}
