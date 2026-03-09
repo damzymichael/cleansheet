@@ -65,9 +65,11 @@ export function EntryForm({
 
     const calculateTotalPrice = () => {
         const subtotal = calculateSubtotal();
-        const discountAmount = (parseFloat(discount) / 100) * subtotal;
+        const d = parseFloat(discount) || 0;
+        const df = parseFloat(deliveryFee) || 0;
+        const discountAmount = (d / 100) * subtotal;
         const totalAfterDiscount = subtotal - discountAmount;
-        const finalTotal = totalAfterDiscount + (serviceType === "delivery" ? parseFloat(deliveryFee) : 0);
+        const finalTotal = totalAfterDiscount + (serviceType === "delivery" ? df : 0);
         return finalTotal;
     };
 
@@ -96,8 +98,8 @@ export function EntryForm({
             price: finalPrice,
             createdAt: initialData?.createdAt || new Date().toISOString(),
             serviceType,
-            deliveryFee: serviceType === "delivery" ? parseFloat(deliveryFee) : 0,
-            discount: parseFloat(discount),
+            deliveryFee: serviceType === "delivery" ? parseFloat(deliveryFee) || 0 : 0,
+            discount: parseFloat(discount) || 0,
         };
 
         // If not paid, generate and save invoice in background

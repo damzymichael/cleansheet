@@ -171,6 +171,5 @@ export async function generateInvoice({
         { align: "center", maxWidth: 180 },
     );
 
-    doc.save(`${customerName}_Invoice_${invoiceId}.pdf`);
     return doc.output("blob");
 }

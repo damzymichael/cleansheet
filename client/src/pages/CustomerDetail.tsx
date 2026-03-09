@@ -1,37 +1,17 @@
 import { useParams, useNavigate } from "react-router-dom";
-import { useState, useEffect, useMemo } from "react";
-import { ArrowLeft, Mail, Phone, MapPin, Calendar, CreditCard, ChevronRight, User } from "lucide-react";
+import { useMemo } from "react";
+import { ArrowLeft, Phone, MapPin, Calendar, CreditCard, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import Layout from "@/components/layout";
-
-interface Customer {
-    id: number;
-    name: string;
-    phone?: string;
-    address?: string;
-}
+import { useStore } from "@/store/useStore";
 
 export default function CustomerDetail() {
     const { id } = useParams();
     const navigate = useNavigate();
-    const [customer, setCustomer] = useState<Customer | null>(null);
-    const [entries, setEntries] = useState<any[]>([]);
-
-    useEffect(() => {
-        const storedCustomers = localStorage.getItem("customers");
-        if (storedCustomers) {
-            const customers: Customer[] = JSON.parse(storedCustomers);
-            const found = customers.find(c => c.id === Number(id));
-            if (found) setCustomer(found);
-        }
-
-        const storedEntries = localStorage.getItem("entries");
-        if (storedEntries) {
-            setEntries(JSON.parse(storedEntries));
-        }
-    }, [id]);
+    const { customers, entries } = useStore();
+    const customer = useMemo(() => customers.find(c => c.id === Number(id)), [customers, id]);
 
     const customerEntries = useMemo(() => {
         if (!customer) return [];
