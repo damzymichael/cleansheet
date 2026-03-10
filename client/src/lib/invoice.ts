@@ -147,14 +147,14 @@ export async function generateInvoice({
     // Bank Details
     const finalY = (doc as any).lastAutoTable.finalY + 15;
     if (bankDetails && bankDetails.bankName && bankDetails.accountNumber) {
-        doc.setFontSize(12);
+        doc.setFontSize(14);
         doc.setTextColor(40, 40, 40);
         doc.setFont("helvetica", "bold");
         doc.text("PAYMENT DETAILS", 14, finalY);
 
-        doc.setFontSize(10);
-        doc.setFont("helvetica", "normal");
-        doc.setTextColor(100, 100, 100);
+        doc.setFontSize(12);
+        doc.setFont("helvetica", "bold");
+        doc.setTextColor(40, 40, 40);
         doc.text(`Bank Name: ${bankDetails.bankName}`, 14, finalY + 7);
         doc.text(`Account No: ${bankDetails.accountNumber}`, 14, finalY + 14);
         doc.text(`Account Name: ${bankDetails.accountName || ""}`, 14, finalY + 21);
