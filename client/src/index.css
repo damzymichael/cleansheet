@@ -157,5 +157,49 @@ input[type="number"] {
 }
 
 input:focus {
-  font-size: 16px;
+    font-size: 16px;
+}
+
+button:hover {
+    cursor: pointer;
+}
+
+/* ==========================================
+   1. Chrome, Edge, Safari (WebKit Engines)
+   ========================================== */
+
+/* Set a thinner scrollbar width */
+::-webkit-scrollbar {
+    width: 6px; /* Adjust this value to make it wider or narrower */
+}
+
+/* Remove the scrollbar arrows entirely */
+::-webkit-scrollbar-button {
+    display: none;
+    width: 0;
+    height: 0;
+}
+
+/* Remove the track background completely (make it transparent) */
+::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+/* Style the moving thumb (color & rounded corners) */
+::-webkit-scrollbar-thumb {
+    background-color: #3b82f6; /* Change to your preferred color */
+    border-radius: 4px;
+}
+
+/* Hover effect on the scrollbar thumb */
+::-webkit-scrollbar-thumb:hover {
+    background-color: #2563eb;
+}
+
+/* ==========================================
+   2. Firefox Support
+   ========================================== */
+* {
+    scrollbar-width: thin; /* Options: auto, thin, none */
+    scrollbar-color: #3b82f6 transparent; /* [Thumb Color] [Track Color] */
 }

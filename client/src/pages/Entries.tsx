@@ -70,7 +70,6 @@ export default function Entries() {
     const handleShare = async (entry: Entry) => {
         try {
             let blob = await getInvoice(entry.id);
-
             // If not found, regenerate it!
             if (!blob) {
                 toast.info("Regenerating missing invoice...");
@@ -101,8 +100,8 @@ export default function Entries() {
 
             const file = new File([blob], `Invoice-${entry.customerName}.pdf`, { type: "application/pdf" });
 
-            if (navigator.share) {
-                navigator.share({
+            if (navigator.share && navigator.canShare({ files: [file] })) {
+                await navigator.share({
                     files: [file],
                     title: `Invoice for ${entry.customerName}`,
                     text: `Laundry invoice for ${entry.customerName} - ₦${entry.price.toLocaleString()}`,
@@ -225,15 +224,22 @@ export default function Entries() {
                                                 </span>
                                             </p>
                                             <div className="flex gap-2 flex-wrap">
-                                                {entry.items.slice(0, 2).map((item: any, idx: number) => (
-                                                    <Badge
-                                                        key={idx}
-                                                        variant="outline"
-                                                        className="bg-background/50 font-normal"
-                                                    >
-                                                        {item.quantity}x {item.clothName}
-                                                    </Badge>
-                                                ))}
+                                                {entry.items
+                                                    .slice(0, 2)
+                                                    .map(
+                                                        (
+                                                            item: { quantity: number; clothName: string },
+                                                            idx: number,
+                                                        ) => (
+                                                            <Badge
+                                                                key={idx}
+                                                                variant="outline"
+                                                                className="bg-background/50 font-normal"
+                                                            >
+                                                                {item.quantity}x {item.clothName}
+                                                            </Badge>
+                                                        ),
+                                                    )}
                                                 {entry.items.length > 2 && (
                                                     <Button
                                                         variant="link"
@@ -313,20 +319,24 @@ export default function Entries() {
 
                 {/* Show More Dialog */}
                 <Dialog open={isMoreOpen} onOpenChange={setIsMoreOpen}>
-                    <DialogContent className="max-w-md">
+                    <DialogContent className="max-w-md font-sans h-150 overflow-auto shadow-none more-items">
                         <DialogHeader>
                             <DialogTitle>Order Items - {showMoreEntry?.customerName}</DialogTitle>
                         </DialogHeader>
                         <div className="space-y-4 py-4 font-sans">
                             <div className="border rounded-lg divide-y">
-                                {showMoreEntry?.items.map((item: any, idx: number) => (
-                                    <div key={idx} className="p-3 flex justify-between items-center">
-                                        <span className="font-medium">
-                                            {item.quantity}x {item.clothName}
-                                        </span>
-                                        <span className="text-muted-foreground">₦{item.price.toLocaleString()}</span>
-                                    </div>
-                                ))}
+                                {showMoreEntry?.items.map(
+                                    (item: { quantity: number; price: number; clothName: string }, idx: number) => (
+                                        <div key={idx} className="p-3 flex justify-between items-center">
+                                            <span className="font-medium">
+                                                {item.quantity}x {item.clothName}
+                                            </span>
+                                            <span className="text-muted-foreground">
+                                                ₦{item.price.toLocaleString()}
+                                            </span>
+                                        </div>
+                                    ),
+                                )}
                             </div>
                             <div className="flex justify-between items-center pt-2 px-1">
                                 <span className="font-bold text-lg">Total</span>

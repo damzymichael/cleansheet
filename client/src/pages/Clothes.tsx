@@ -9,6 +9,7 @@ import Layout from "@/components/layout";
 import { ConfirmDeleteDialog } from "@/components/confirm-delete-dialog";
 import { useStore } from "@/store/useStore";
 import type { Cloth } from "@/lib/types";
+import { toast } from "sonner";
 
 export default function Clothes() {
     const { clothes, addCloth, updateCloth, deleteCloth } = useStore();
@@ -26,16 +27,23 @@ export default function Clothes() {
             return;
         }
 
+        const existingCloth = clothes.find(c => c.name.toLowerCase() === formData.name.toLowerCase().tr);
+
+        if (existingCloth) {
+            toast.error("Cloth already exists");
+            return;
+        }
+
         if (editingId) {
             updateCloth(editingId, {
-                name: formData.name,
+                name: formData.name.trim(),
                 price: parseFloat(formData.price),
             });
             setEditingId(null);
         } else {
             const newCloth: Cloth = {
                 id: Date.now(),
-                name: formData.name,
+                name: formData.name.trim(),
                 price: parseFloat(formData.price),
             };
             addCloth(newCloth);
@@ -97,12 +105,12 @@ export default function Clothes() {
                         clothes.map(cloth => (
                             <Card
                                 key={cloth.id}
-                                className="border-border shadow-sm hover:shadow-md transition-shadow duration-200 overflow-hidden group"
+                                className="border-border shadow-sm hover:shadow-md transition-shadow duration-200 overflow-hidden group pt-0"
                             >
-                                <CardHeader className="bg-muted/30 border-b pb-4 mt-0">
+                                <CardHeader className="bg-muted/30 border-b pt-4">
                                     <CardTitle className="text-lg font-sans">{cloth.name}</CardTitle>
                                 </CardHeader>
-                                <CardContent className="pt-6 space-y-6">
+                                <CardContent className=" space-y-6">
                                     <div className="flex items-baseline justify-between font-sans">
                                         <p className="text-sm font-medium text-muted-foreground">Default Price</p>
                                         <p className="text-3xl font-bold text-foreground">
