@@ -27,7 +27,7 @@ export default function Clothes() {
             return;
         }
 
-        const existingCloth = clothes.find(c => c.name.toLowerCase() === formData.name.toLowerCase().tr);
+        const existingCloth = clothes.find(c => c.name.toLowerCase() === formData.name.toLowerCase().trim());
 
         if (existingCloth) {
             toast.error("Cloth already exists");
