@@ -14,6 +14,7 @@ import { generateInvoice } from "@/lib/invoice";
 import { toast } from "sonner";
 import { useStore } from "@/store/useStore";
 import type { Entry } from "@/lib/types";
+import * as Sentry from "@sentry/react";
 
 export default function Entries() {
     const navigate = useNavigate();
@@ -113,6 +114,7 @@ export default function Entries() {
             }
         } catch (err) {
             console.error(err);
+            Sentry.captureException(err);
             toast.error("Failed to share invoice");
         }
     };
