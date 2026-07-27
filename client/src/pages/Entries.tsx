@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Plus, Trash2, Search, Share2, Check } from "lucide-react";
+import { Plus, Trash2, Search, Share2, Check, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -33,6 +33,13 @@ export default function Entries() {
     // Paid Confirmation State
     const [isPaidDialogOpen, setIsPaidDialogOpen] = useState(false);
     const [entryToMarkAsPaid, setEntryToMarkAsPaid] = useState<Entry | null>(null);
+
+    // Share Dialog Logic
+    const [sharingEntry, setSharingEntry] = useState<Entry | null>(null);
+    const [isShareDialogOpen, setIsShareDialogOpen] = useState(false);
+    const [isGeneratingInvoice, setIsGeneratingInvoice] = useState(false);
+    const [isInvoiceGenerated, setIsInvoiceGenerated] = useState(false);
+    const [invoiceBlob, setInvoiceBlob] = useState<Blob | null>(null);
 
     const handleDeleteEntry = (id: number) => {
         setEntryToDelete(id);
@@ -68,47 +75,90 @@ export default function Entries() {
         toast.success("Entry marked as paid");
     };
 
-    const handleShare = async (entry: Entry) => {
+    const handleOpenShare = async (entry: Entry) => {
+        setSharingEntry(entry);
+        setIsShareDialogOpen(true);
+        setIsInvoiceGenerated(false);
+        setIsGeneratingInvoice(false);
+        setInvoiceBlob(null);
+
+        // Check if there is an existing invoice in DB
         try {
-            let blob = await getInvoice(entry.id);
-            // If not found, regenerate it!
-            if (!blob) {
-                toast.info("Regenerating missing invoice...");
-
-                const customer = useStore.getState().customers.find(c => c.name === entry.customerName);
-
-                blob = await generateInvoice({
-                    customerName: entry.customerName,
-                    items: entry.items,
-                    total: entry.price,
-                    organizationName: settings.orgName,
-                    businessPhone: settings.phone,
-                    businessAddress: settings.address,
-                    customerPhone: customer?.phone,
-                    customerAddress: customer?.address,
-                    bankDetails: {
-                        bankName: settings.bankName,
-                        accountNumber: settings.bankAccount,
-                        accountName: settings.accountName,
-                    },
-                    deliveryFee: entry.deliveryFee || 0,
-                    discount: entry.discount || 0,
-                    invoiceId: entry.id,
-                });
-                // Save it back for future use
-                await saveInvoice(entry.id, blob);
+            const existingBlob = await getInvoice(entry.id);
+            if (existingBlob) {
+                setInvoiceBlob(existingBlob);
+                setIsInvoiceGenerated(true);
             }
+        } catch (err) {
+            console.error("Error reading invoice database", err);
+        }
+    };
 
-            const file = new File([blob], `Invoice-${entry.customerName}.pdf`, { type: "application/pdf" });
+    const handleCloseShareDialog = async () => {
+        setIsShareDialogOpen(false);
+        if (sharingEntry) {
+            try {
+                await deleteInvoice(sharingEntry.id);
+            } catch (err) {
+                console.error("Error deleting invoice", err);
+            }
+        }
+        setSharingEntry(null);
+        setIsInvoiceGenerated(false);
+        setIsGeneratingInvoice(false);
+        setInvoiceBlob(null);
+    };
+
+    const handleGenerateInvoice = async () => {
+        if (!sharingEntry) return;
+        setIsGeneratingInvoice(true);
+        try {
+            const customer = useStore.getState().customers.find(c => c.name === sharingEntry.customerName);
+            const blob = await generateInvoice({
+                customerName: sharingEntry.customerName,
+                items: sharingEntry.items,
+                total: sharingEntry.price,
+                organizationName: settings.orgName,
+                businessPhone: settings.phone,
+                businessAddress: settings.address,
+                customerPhone: customer?.phone,
+                customerAddress: customer?.address,
+                bankDetails: {
+                    bankName: settings.bankName,
+                    accountNumber: settings.bankAccount,
+                    accountName: settings.accountName,
+                },
+                deliveryFee: sharingEntry.deliveryFee || 0,
+                discount: sharingEntry.discount || 0,
+                invoiceId: sharingEntry.id,
+            });
+
+            await saveInvoice(sharingEntry.id, blob);
+            setInvoiceBlob(blob);
+            setIsInvoiceGenerated(true);
+            toast.success("Invoice generated successfully!");
+        } catch (err) {
+            console.error(err);
+            Sentry.captureException(err);
+            toast.error("Failed to generate invoice");
+        } finally {
+            setIsGeneratingInvoice(false);
+        }
+    };
+
+    const handleShareClick = async () => {
+        if (!sharingEntry || !invoiceBlob) return;
+        try {
+            const file = new File([invoiceBlob], `Invoice-${sharingEntry.customerName}.pdf`, { type: "application/pdf" });
 
             if (navigator.share && navigator.canShare({ files: [file] })) {
                 await navigator.share({
                     files: [file],
-                    title: `Invoice for ${entry.customerName}`,
-                    text: `Laundry invoice for ${entry.customerName} - ₦${entry.price.toLocaleString()}`,
+                    title: `Invoice for ${sharingEntry.customerName}`,
+                    text: `Laundry invoice for ${sharingEntry.customerName} - ₦${sharingEntry.price.toLocaleString()}`,
                 });
             } else {
-                const url = URL.createObjectURL(blob);
+                const url = URL.createObjectURL(invoiceBlob);
                 window.open(url);
                 toast.info("Opening invoice in new tab (Sharing not supported)");
             }
@@ -118,6 +168,7 @@ export default function Entries() {
             toast.error("Failed to share invoice");
         }
     };
+
 
     const filteredEntries = entries.filter(entry => {
         const matchesStatus =
@@ -285,7 +336,7 @@ export default function Entries() {
                                                             className="h-10 w-10 text-primary hover:text-white hover:bg-primary hover:border-primary"
                                                             onClick={e => {
                                                                 e.stopPropagation();
-                                                                handleShare(entry);
+                                                                handleOpenShare(entry);
                                                             }}
                                                         >
                                                             <Share2 className="w-4 h-4" />
@@ -373,6 +424,76 @@ export default function Entries() {
                             <Button className="bg-green-600 hover:bg-green-700 text-white" onClick={confirmMarkAsPaid}>
                                 Yes, Mark as Paid
                             </Button>
+                        </DialogFooter>
+                    </DialogContent>
+                </Dialog>
+
+                {/* Share Invoice Dialog */}
+                <Dialog open={isShareDialogOpen} onOpenChange={open => { if (!open) handleCloseShareDialog(); }}>
+                    <DialogContent className="max-w-md font-sans">
+                        <DialogHeader>
+                            <DialogTitle className="text-xl">Share Invoice</DialogTitle>
+                        </DialogHeader>
+                        <div className="py-6 space-y-4">
+                            <div className="p-4 rounded-xl bg-muted/50 border border-border/60 space-y-2">
+                                <p className="text-sm font-medium text-muted-foreground font-sans">Customer</p>
+                                <p className="text-lg font-semibold text-foreground font-sans">{sharingEntry?.customerName}</p>
+                                <p className="text-2xl font-bold text-primary font-sans">₦{sharingEntry?.price.toLocaleString()}</p>
+                            </div>
+                            
+                            {!isInvoiceGenerated && !isGeneratingInvoice && (
+                                <p className="text-sm text-muted-foreground font-sans">
+                                    Click below to generate the invoice PDF. You will be able to share it once it is generated.
+                                </p>
+                            )}
+                            
+                            {isGeneratingInvoice && (
+                                <div className="flex flex-col items-center justify-center py-4 space-y-3 font-sans">
+                                    <Loader2 className="w-8 h-8 text-primary animate-spin" />
+                                    <p className="text-sm text-muted-foreground font-medium">Generating invoice PDF...</p>
+                                </div>
+                            )}
+
+                            {isInvoiceGenerated && !isGeneratingInvoice && (
+                                <div className="p-3 bg-green-500/10 border border-green-500/20 text-green-600 rounded-lg text-sm flex items-center gap-2 font-sans">
+                                    <Check className="w-5 h-5 text-green-600 shrink-0" />
+                                    <span>Invoice ready! You can now share or download.</span>
+                                </div>
+                            )}
+                        </div>
+                        <DialogFooter className="flex gap-2 font-sans">
+                            <Button 
+                                variant="outline" 
+                                onClick={handleCloseShareDialog}
+                                disabled={isGeneratingInvoice}
+                            >
+                                {isInvoiceGenerated ? "Close Modal" : "Cancel"}
+                            </Button>
+                            
+                            {!isInvoiceGenerated ? (
+                                <Button 
+                                    onClick={handleGenerateInvoice}
+                                    disabled={isGeneratingInvoice}
+                                    className="gap-2"
+                                >
+                                    {isGeneratingInvoice ? (
+                                        <>
+                                            <Loader2 className="w-4 h-4 animate-spin" />
+                                            Generating...
+                                        </>
+                                    ) : (
+                                        "Generate Invoice"
+                                    )}
+                                </Button>
+                            ) : (
+                                <Button 
+                                    onClick={handleShareClick}
+                                    className="gap-2 font-sans"
+                                >
+                                    <Share2 className="w-4 h-4" />
+                                    Share
+                                </Button>
+                            )}
                         </DialogFooter>
                     </DialogContent>
                 </Dialog>
