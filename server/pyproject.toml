@@ -1,0 +1,26 @@
+[project]
+name = "cleansheeet-api"
+version = "0.1.0"
+description = "API for a drycleaning business management tool"
+readme = "README.md"
+requires-python = ">=3.14"
+dependencies = [
+    "alembic>=1.19.1",
+    "asyncpg>=0.31.0",
+    "fastapi[standard]>=0.141.1",
+    "psycopg[binary]>=3.3.5",
+    "pwdlib[argon2]>=0.3.1",
+    "pyjwt>=2.13.0",
+    "redis>=8.1.0",
+    "sqlalchemy>=2.0.52",
+]
+
+[project.scripts]
+cleansheet-api = "app.main:main"
+
+[tool.uv.build-backend]
+module-name = "app"
+
+[build-system]
+requires = ["uv_build>=0.12.8,<0.13.0"]
+build-backend = "uv_build"
