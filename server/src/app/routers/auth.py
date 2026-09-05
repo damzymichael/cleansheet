@@ -18,6 +18,8 @@ from app.core.auth import (
     set_auth_cookies,
     extract_session_id,
     clear_auth_cookies,
+    get_current_user,
+    CurrentUser,
 )
 from app.core.redis import get_redis
 from app.core.config import settings
@@ -120,7 +122,12 @@ async def login(
 
 
 @router.post("/logout", response_model=BaseResponse, status_code=status.HTTP_200_OK)
-async def logout(request: Request, response: Response, redis=Depends(get_redis)):
+async def logout(
+    request: Request,
+    response: Response,
+    current_user: Annotated[CurrentUser, Depends(get_current_user)],
+    redis=Depends(get_redis),
+):
     access_token = request.cookies.get("access_token")
     session_id = extract_session_id(access_token)
 
@@ -162,7 +169,7 @@ async def refresh_token(
     # so we look sessions up by the hash of the incoming token.
     incoming_hash = hash_token(refresh_token)
     session_id = await redis.get(f"refresh_lookup:{incoming_hash}")
-    print({'session_id': session_id})
+    print({"session_id": session_id})
 
     if session_id is None:
         # Either never existed, already rotated away, or expired.

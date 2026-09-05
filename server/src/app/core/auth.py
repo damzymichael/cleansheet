@@ -70,7 +70,7 @@ def set_auth_cookies(response: Response, access_token: str, refresh_token: str) 
         max_age=int(timedelta(days=settings.refresh_token_expire_days).total_seconds()),
         httponly=True,
         secure=settings.cookie_secure,
-        samesite="strict",
+        samesite="lax",
         path="/api/auth",  # only sent to /auth/* routes (refresh, logout)
     )
 

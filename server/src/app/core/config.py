@@ -19,6 +19,7 @@ class Settings(BaseSettings):
     cookie_secure: bool
     database_url: NonEmptyStr
     redis_url: NonEmptyStr
+    frontend_url: str = "http://localhost:5173"
 
 
 settings = Settings()  # type: ignore[call-arg] # Loaded from .env file

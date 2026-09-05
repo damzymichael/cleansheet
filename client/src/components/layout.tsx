@@ -1,10 +1,14 @@
 import React from "react";
-import { Link, useLocation } from "react-router-dom";
-import { Home, FileText, Shirt, Users, Shield, Menu, X, Settings, AlertCircle } from "lucide-react";
+import { Link, useLocation, useNavigate } from "react-router-dom";
+import { Home, FileText, Shirt, Users, Shield, Menu, X, Settings, AlertCircle, LogOut, Loader2 } from "lucide-react";
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { ModeToggle } from "@/components/mode-toggle";
+import { useMutation } from "@tanstack/react-query";
+import { api } from "@/lib/axios";
+import { useAuthStore } from "@/store/auth";
+import { toast } from "sonner";
 import {
     Dialog,
     DialogContent,
@@ -32,6 +36,22 @@ export default function Layout({ children }: { children: React.ReactNode }) {
     const [settingsMissing, setSettingsMissing] = useState(false);
     const { pathname } = useLocation();
     const { settings } = useStore();
+    const navigate = useNavigate();
+    const logout = useAuthStore(state => state.logout);
+
+    const logoutMutation = useMutation({
+        mutationFn: async () => {
+            await api.post("/auth/logout");
+        },
+        onSuccess: () => {
+            logout();
+            navigate("/login", { replace: true });
+            toast.success("Logged out successfully");
+        },
+        onError: () => {
+            toast.error("Failed to logout");
+        },
+    });
 
     useEffect(() => {
         if (!settings.orgName && pathname !== "/settings") {
@@ -151,11 +171,29 @@ export default function Layout({ children }: { children: React.ReactNode }) {
 
             {/* Main Content */}
             <main className="flex-1 flex flex-col min-w-0 bg-background overflow-hidden font-sans">
-                <header className="border-b border-border px-4 md:px-8 py-4 flex items-center justify-between md:justify-end bg-background z-40 shrink-0">
-                    <Button variant="ghost" size="icon" className="md:hidden" onClick={() => setMobileMenuOpen(true)}>
+                <header className="border-b border-border px-4 md:px-8 py-4 flex items-center justify-between md:justify-end bg-background z-40 shrink-0 gap-4">
+                    <Button
+                        variant="ghost"
+                        size="icon"
+                        className="md:hidden mr-auto"
+                        onClick={() => setMobileMenuOpen(true)}
+                    >
                         <Menu className="w-6 h-6" />
                     </Button>
                     <ModeToggle />
+                    <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => logoutMutation.mutate()}
+                        disabled={logoutMutation.isPending}
+                    >
+                        {logoutMutation.isPending ? (
+                            <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                        ) : (
+                            <LogOut className="w-4 h-4 mr-2" />
+                        )}
+                        Logout
+                    </Button>
                 </header>
 
                 <div

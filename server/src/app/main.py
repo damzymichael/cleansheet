@@ -41,7 +41,18 @@ async def lifespan(_app: FastAPI):
     logger.info("Redis connection closed")
 
 
+from fastapi.middleware.cors import CORSMiddleware
+from app.core.config import settings
+
 app = FastAPI(title="Cleansheet API", lifespan=lifespan)
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[settings.frontend_url],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 # TODO Change Logo in html
 HOME_ROUTE_DISPLAY_HTML = """
@@ -78,6 +89,20 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
             "message": "Validation Error",
             # exc.errors() returns a list of dictionaries with details about what failed
             "errors": exc.errors(),
+        },
+    )
+
+
+# 3. Catch-all for Internal Server Errors
+@app.exception_handler(Exception)
+async def global_exception_handler(request: Request, exc: Exception):
+    logger.error(f"Unhandled exception: {exc}", exc_info=True)
+    return JSONResponse(
+        status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+        content={
+            "success": False,
+            "message": "An unexpected error occurred. Please try again later.",
+            "errors": None,
         },
     )
 
