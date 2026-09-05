@@ -1,9 +1,7 @@
-# nixpacks.toml
-
 providers = ["python"]
 
-[nix]
-nixPkgs = ["uv", "python312"]
+[phases.setup]
+nixPkgs = ["python312", "uv"]
 
 [phases.install]
 cmds = ["uv sync --frozen --no-dev"]
