@@ -1,6 +1,5 @@
 # nixpacks.toml
 
-[providers]
 providers = ["python"]
 
 [nix]
