@@ -1,14 +1,10 @@
 providers = ["python"]
 
 [phases.setup]
-nixPkgs = ["python312"]
+nixPkgs = ["python312", "uv"]
 
 [phases.install]
 cmds = ["uv sync --frozen --no-dev"]
 
 [start]
 cmd = "uv run alembic upgrade head && uv run cleansheet-api"
-
-[variables]
-NIXPACKS_UV_VERSION = "0.12.8"
-NIXPACKS_PYTHON_PACKAGE_MANAGER = "uv"
