@@ -121,7 +121,7 @@ app.include_router(BusinessRouter, prefix="/api")
 def main():
     """Entry point invoked by `uv run cleansheeet-api`."""
     uvicorn.run(
-        "app.main:app", host="127.0.0.1", port=8000, reload=True, log_level="info"
+        "app.main:app", host="0.0.0.0", port=8000, reload=True, log_level="info"
     )
 
 
