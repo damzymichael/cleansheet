@@ -29,6 +29,7 @@ const queryClient = new QueryClient({
     },
 });
 
+// TODO Make multiple requests run one by one on pages
 function ToasterWithTheme() {
     const { theme } = useTheme();
     return <Toaster theme={theme as any} position="top-center" richColors />;
@@ -36,20 +37,20 @@ function ToasterWithTheme() {
 
 // Wrapper for routes that require authentication
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
-    const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
+    const isAuthenticated = useAuthStore(state => state.isAuthenticated);
     const location = useLocation();
 
-    if (!isAuthenticated) {
-        // Redirect them to the /login page, but save the current location they were trying to go to
-        return <Navigate to="/login" state={{ from: location }} replace />;
-    }
+    // if (!isAuthenticated) {
+    //     // Redirect them to the /login page, but save the current location they were trying to go to
+    //     return <Navigate to="/login" state={{ from: location }} replace />;
+    // }
 
     return <>{children}</>;
 }
 
 // Wrapper for routes that should NOT be accessible when logged in (like Login/Signup)
 function PublicRoute({ children }: { children: React.ReactNode }) {
-    const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
+    const isAuthenticated = useAuthStore(state => state.isAuthenticated);
     const location = useLocation();
 
     if (isAuthenticated) {
@@ -67,18 +68,88 @@ function App() {
                 <ThemeProvider defaultTheme="system" storageKey="cleansheet-ui-theme">
                     <Routes>
                         {/* Public Routes */}
-                        <Route path="login" element={<PublicRoute><Login /></PublicRoute>} />
-                        <Route path="signup" element={<PublicRoute><Signup /></PublicRoute>} />
+                        <Route
+                            path="login"
+                            element={
+                                <PublicRoute>
+                                    <Login />
+                                </PublicRoute>
+                            }
+                        />
+                        <Route
+                            path="signup"
+                            element={
+                                <PublicRoute>
+                                    <Signup />
+                                </PublicRoute>
+                            }
+                        />
 
                         {/* Protected Routes */}
-                        <Route path="/" element={<ProtectedRoute><Home /></ProtectedRoute>} />
-                        <Route path="entries" element={<ProtectedRoute><Entries /></ProtectedRoute>} />
-                        <Route path="entries/new" element={<ProtectedRoute><NewEntry /></ProtectedRoute>} />
-                        <Route path="clothes" element={<ProtectedRoute><Clothes /></ProtectedRoute>} />
-                        <Route path="customers" element={<ProtectedRoute><Customers /></ProtectedRoute>} />
-                        <Route path="customers/:id" element={<ProtectedRoute><CustomerDetail /></ProtectedRoute>} />
-                        <Route path="staff" element={<ProtectedRoute><Staff /></ProtectedRoute>} />
-                        <Route path="settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
+                        <Route
+                            path="/"
+                            element={
+                                <ProtectedRoute>
+                                    <Home />
+                                </ProtectedRoute>
+                            }
+                        />
+                        <Route
+                            path="entries"
+                            element={
+                                <ProtectedRoute>
+                                    <Entries />
+                                </ProtectedRoute>
+                            }
+                        />
+                        <Route
+                            path="entries/new"
+                            element={
+                                <ProtectedRoute>
+                                    <NewEntry />
+                                </ProtectedRoute>
+                            }
+                        />
+                        <Route
+                            path="clothes"
+                            element={
+                                <ProtectedRoute>
+                                    <Clothes />
+                                </ProtectedRoute>
+                            }
+                        />
+                        <Route
+                            path="customers"
+                            element={
+                                <ProtectedRoute>
+                                    <Customers />
+                                </ProtectedRoute>
+                            }
+                        />
+                        <Route
+                            path="customers/:id"
+                            element={
+                                <ProtectedRoute>
+                                    <CustomerDetail />
+                                </ProtectedRoute>
+                            }
+                        />
+                        <Route
+                            path="staff"
+                            element={
+                                <ProtectedRoute>
+                                    <Staff />
+                                </ProtectedRoute>
+                            }
+                        />
+                        <Route
+                            path="settings"
+                            element={
+                                <ProtectedRoute>
+                                    <Settings />
+                                </ProtectedRoute>
+                            }
+                        />
 
                         {/* Unprotected test route */}
                         <Route path="components" element={<Components />} />

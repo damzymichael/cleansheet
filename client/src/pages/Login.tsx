@@ -10,7 +10,7 @@ import { z } from "zod";
 import { toast } from "sonner";
 import { useMutation } from "@tanstack/react-query";
 import { useNavigate, useLocation } from "react-router-dom";
-import { api } from "@/lib/axios";
+import { api, api_instance } from "@/lib/axios";
 import { useAuthStore } from "@/store/auth";
 
 const loginSchema = z.object({
@@ -35,7 +35,7 @@ function Login() {
 
     const loginMutation = useMutation({
         mutationFn: async (data: z.infer<typeof loginSchema>) => {
-            const response = await api.post("/auth/login", data);
+            const response = await api_instance.post("/auth/login", data);
             return response.data;
         },
         onSuccess: data => {
