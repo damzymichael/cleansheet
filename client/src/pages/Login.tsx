@@ -53,14 +53,14 @@ function Login() {
     }
 
     return (
-        <div className="min-h-screen pt-20 gap-4 px-4 bg-background flex items-center justify-center">
-            <div className="w-[95%] max-w-150 mx-auto -mt-30">
+        <div className="h-dvh w-full overflow-y-auto py-8 px-4 bg-background flex items-center justify-center">
+            <div className="w-[95%] max-w-150 mx-auto">
                 <Card>
                     <CardHeader>
                         <CardTitle>Login to your account</CardTitle>
                         <CardDescription>Enter your email below to login to your account</CardDescription>
                     </CardHeader>
-                    <CardContent>
+                    <CardContent className="px-4 sm:px-6">
                         <form onSubmit={form.handleSubmit(onSubmit)}>
                             <FieldGroup>
                                 <Controller

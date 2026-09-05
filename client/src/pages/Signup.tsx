@@ -80,8 +80,8 @@ function Signup() {
         mutate(data);
     }
     return (
-        <div className="min-h-screen py-10 gap-4 px-4 bg-background flex items-center justify-center">
-            <div className="w-[95%] max-w-150 mx-auto">
+        <div className="h-dvh w-full overflow-y-auto py-12 px-2 sm:px-4 bg-background">
+            <div className="w-[95%] max-w-150 mx-auto my-auto">
                 <Card>
                     <CardHeader className="text-center">
                         <CardTitle className="text-3xl font-bold">Laundry</CardTitle>
@@ -89,7 +89,7 @@ function Signup() {
                             Sign up to manage your business
                         </CardDescription>
                     </CardHeader>
-                    <CardContent>
+                    <CardContent className="px-4 sm:px-6">
                         <form onSubmit={form.handleSubmit(onSubmit)}>
                             <FieldGroup>
                                 <Controller
@@ -254,7 +254,7 @@ function Signup() {
                 </Card>
             </div>
         </div>
-    );
+    )
 }
 
 export default Signup;
