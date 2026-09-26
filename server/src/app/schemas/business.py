@@ -1,5 +1,14 @@
-from typing import Optional
 from pydantic import BaseModel, Field, model_validator
+
+
+class BusinessResponse(BaseModel):
+    name: str = ""
+    phone_number: str = ""
+    address: str = ""
+    bank_name: str = ""
+    account_number: str = ""
+    account_name: str = ""
+    default_delivery_price: int | None = None
 
 
 class BusinessSchema(BaseModel):

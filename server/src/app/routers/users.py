@@ -1,5 +1,5 @@
 from fastapi import APIRouter, Request, status, Depends, HTTPException
-from app.schemas.users import UserSignup, UserSignupData
+from app.schemas.users import UserSignup
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.database import get_db

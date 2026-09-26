@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -6,53 +6,74 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import Layout from "@/components/layout";
 import { toast } from "sonner";
 import { Building2, Landmark, CreditCard, User, Truck, Phone, MapPin, Loader2 } from "lucide-react";
-import { useStore } from "@/store/useStore";
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import { api } from "@/lib/axios";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import * as z from "zod";
+
+const settingsSchema = z.object({
+    orgName: z.string().min(1, "Organization name is required"),
+    phone: z.string().min(1, "Phone number is required"),
+    address: z.string().min(1, "Business address is required"),
+    bankName: z.string().min(1, "Bank name is required"),
+    bankAccount: z.string().min(1, "Bank account number is required"),
+    accountName: z.string().min(1, "Bank account name is required"),
+    defaultDeliveryFee: z.coerce.number().min(0, "Delivery fee must be a positive number"),
+});
+
+type SettingsFormValues = z.infer<typeof settingsSchema>;
+
+type BusinessData = {
+    success: boolean;
+    message: string;
+    data: {
+        name: string;
+        phone_number: string;
+        address: string;
+        bank_name: string;
+        account_number: string;
+        account_name: string;
+        default_delivery_price: number;
+    };
+};
 
 export default function Settings() {
-    const { settings: storeSettings, updateSettings } = useStore();
-    const [settings, setSettings] = useState(storeSettings);
+    const {
+        register,
+        handleSubmit,
+        reset,
+        formState: { errors },
+    } = useForm<z.input<typeof settingsSchema>, any, SettingsFormValues>({
+        resolver: zodResolver(settingsSchema),
+    });
 
     const { data: businessData, isLoading } = useQuery({
         queryKey: ["business"],
         queryFn: async () => {
-            const res = await api.get("/business");
+            const res = await api.get<BusinessData>("/business");
             return res.data;
         },
     });
 
+    const { } = useMutation({})
+
     useEffect(() => {
         if (businessData?.data) {
-            const b = businessData.data;
-            setSettings({
-                orgName: b.name || "",
-                phone: b.phone_number || "",
-                address: b.address || "",
-                bankName: b.bank_name || "",
-                bankAccount: b.account_number || "",
-                accountName: b.account_name || "",
-                defaultDeliveryFee: b.default_delivery_price || 0,
+            const businessInfo = businessData.data;
+            reset({
+                orgName: businessInfo.name || "",
+                phone: businessInfo.phone_number || "",
+                address: businessInfo.address || "",
+                bankName: businessInfo.bank_name || "",
+                bankAccount: businessInfo.account_number || "",
+                accountName: businessInfo.account_name || "",
+                defaultDeliveryFee: businessInfo.default_delivery_price,
             });
-        } else {
-            setSettings(storeSettings);
         }
-    }, [storeSettings, businessData]);
+    }, [businessData, reset]);
 
-    const handleSave = () => {
-        if (!settings.orgName) {
-            toast.error("Organization name is required");
-            return;
-        }
-        if (!settings.phone) {
-            toast.error("Phone number is required");
-            return;
-        }
-        if (!settings.address) {
-            toast.error("Business address is required");
-            return;
-        }
-        updateSettings(settings);
+    const onSubmit = (data: SettingsFormValues) => {
         toast.success("Settings saved successfully");
     };
 
@@ -71,7 +92,7 @@ export default function Settings() {
                         <Loader2 className="w-8 h-8 animate-spin text-primary" />
                     </div>
                 ) : (
-                    <div className="grid gap-6">
+                    <form onSubmit={handleSubmit(onSubmit)} className="grid gap-6">
                         <Card>
                             <CardHeader>
                                 <CardTitle className="flex items-center gap-2">
@@ -88,9 +109,11 @@ export default function Settings() {
                                     <Input
                                         id="orgName"
                                         placeholder="e.g. Clean Sheet Laundry"
-                                        value={settings.orgName}
-                                        onChange={e => setSettings({ ...settings, orgName: e.target.value })}
+                                        {...register("orgName")}
                                     />
+                                    {errors.orgName && (
+                                        <p className="text-sm text-destructive">{errors.orgName.message}</p>
+                                    )}
                                 </div>
                                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 font-sans">
                                     <div className="space-y-2">
@@ -98,12 +121,10 @@ export default function Settings() {
                                             <Phone className="w-3.5 h-3.5 text-muted-foreground" />
                                             Business Phone *
                                         </Label>
-                                        <Input
-                                            id="phone"
-                                            placeholder="e.g. +234 123 456 7890"
-                                            value={settings.phone}
-                                            onChange={e => setSettings({ ...settings, phone: e.target.value })}
-                                        />
+                                        <Input id="phone" placeholder="e.g. +234 123 456 7890" {...register("phone")} />
+                                        {errors.phone && (
+                                            <p className="text-sm text-destructive">{errors.phone.message}</p>
+                                        )}
                                     </div>
                                     <div className="space-y-2 font-sans">
                                         <Label htmlFor="address" className="flex items-center gap-1.5 font-sans">
@@ -113,9 +134,11 @@ export default function Settings() {
                                         <Input
                                             id="address"
                                             placeholder="Enter business address"
-                                            value={settings.address}
-                                            onChange={e => setSettings({ ...settings, address: e.target.value })}
+                                            {...register("address")}
                                         />
+                                        {errors.address && (
+                                            <p className="text-sm text-destructive">{errors.address.message}</p>
+                                        )}
                                     </div>
                                 </div>
                             </CardContent>
@@ -138,12 +161,10 @@ export default function Settings() {
                                             <Landmark className="w-3.5 h-3.5 text-muted-foreground" />
                                             Bank Name
                                         </Label>
-                                        <Input
-                                            id="bankName"
-                                            placeholder="Enter bank name"
-                                            value={settings.bankName}
-                                            onChange={e => setSettings({ ...settings, bankName: e.target.value })}
-                                        />
+                                        <Input id="bankName" placeholder="Enter bank name" {...register("bankName")} />
+                                        {errors.bankName && (
+                                            <p className="text-sm text-destructive">{errors.bankName.message}</p>
+                                        )}
                                     </div>
                                     <div className="space-y-2 font-sans">
                                         <Label htmlFor="bankAccount" className="flex items-center gap-1.5 font-sans">
@@ -153,9 +174,11 @@ export default function Settings() {
                                         <Input
                                             id="bankAccount"
                                             placeholder="Enter account number"
-                                            value={settings.bankAccount}
-                                            onChange={e => setSettings({ ...settings, bankAccount: e.target.value })}
+                                            {...register("bankAccount")}
                                         />
+                                        {errors.bankAccount && (
+                                            <p className="text-sm text-destructive">{errors.bankAccount.message}</p>
+                                        )}
                                     </div>
                                 </div>
                                 <div className="space-y-2 font-sans">
@@ -166,9 +189,11 @@ export default function Settings() {
                                     <Input
                                         id="accountName"
                                         placeholder="Enter account name"
-                                        value={settings.accountName}
-                                        onChange={e => setSettings({ ...settings, accountName: e.target.value })}
+                                        {...register("accountName")}
                                     />
+                                    {errors.accountName && (
+                                        <p className="text-sm text-destructive">{errors.accountName.message}</p>
+                                    )}
                                 </div>
                             </CardContent>
                         </Card>
@@ -190,19 +215,21 @@ export default function Settings() {
                                         id="deliveryFee"
                                         type="number"
                                         placeholder="0"
-                                        value={settings.defaultDeliveryFee}
-                                        onChange={e => setSettings({ ...settings, defaultDeliveryFee: e.target.value })}
+                                        {...register("defaultDeliveryFee")}
                                     />
+                                    {errors.defaultDeliveryFee && (
+                                        <p className="text-sm text-destructive">{errors.defaultDeliveryFee.message}</p>
+                                    )}
                                 </div>
                             </CardContent>
                         </Card>
 
                         <div className="flex justify-end pt-4 font-sans">
-                            <Button onClick={handleSave} size="lg" className="px-8 font-sans">
+                            <Button type="submit" size="lg" className="px-8 font-sans">
                                 Save Settings
                             </Button>
                         </div>
-                    </div>
+                    </form>
                 )}
             </div>
         </Layout>

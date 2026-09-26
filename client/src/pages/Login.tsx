@@ -39,8 +39,13 @@ function Login() {
             return response.data;
         },
         onSuccess: data => {
+            console.log(data);
             toast.success(data.message || "Login successful");
             login(); // Update auth state
+            if (!data.data.has_business) {
+                navigate("/settings", { replace: true });
+                return;
+            }
             navigate(from, { replace: true }); // Redirect to previous page or home
         },
         onError: (error: any) => {

@@ -24,14 +24,14 @@ from app.core.auth import (
 from app.core.redis import get_redis
 from app.core.config import settings
 from app.core.database import get_db
-from app.schemas.users import UserSignup, UserSignupData, UserLogin
+from app.schemas.users import UserSignup, UserSignupResponse, UserLoginResponse, UserLogin
 
 router = APIRouter(prefix="/auth", tags=["Auth"])
 
 
 @router.post(
     "/signup",
-    response_model=BaseResponse[UserSignupData],
+    response_model=BaseResponse[UserSignupResponse],
     status_code=status.HTTP_201_CREATED,
     description="New user signup endpoint",
 )
@@ -58,13 +58,13 @@ async def sign_up(user: UserSignup, db: Annotated[AsyncSession, Depends(get_db)]
     await db.refresh(new_user)
     return BaseResponse(
         message="Account created successfully, sign in to continue",
-        data=UserSignupData(email=new_user.email),
+        data=UserSignupResponse(email=new_user.email),
     )
 
 
 @router.post(
     "/login",
-    response_model=BaseResponse,
+    response_model=BaseResponse[UserLoginResponse],
     status_code=status.HTTP_201_CREATED,
     description="Login endpoint",
 )
@@ -82,12 +82,13 @@ async def login(
         ),
     )
     user = result.scalars().first()
+    # user_dict = {column.name: getattr(user, column.name) for column in user.__table__.columns}
+    # print(user_dict)
     if not user or not verify_password(payload.password, user.password_hash):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Incorrect email or password",
         )
-
     session_id = str(uuid.uuid4())
     refresh_token = generate_refresh_token()
     access_token = create_access_token(
@@ -118,7 +119,7 @@ async def login(
     )
     set_auth_cookies(response, access_token, refresh_token)
 
-    return BaseResponse(message="Login successful")
+    return BaseResponse(message="Login successful", data=UserLoginResponse(has_business=bool(user.business_id)))
 
 
 @router.post("/logout", response_model=BaseResponse, status_code=status.HTTP_200_OK)

@@ -16,9 +16,11 @@ class UserSignup(BaseModel):
         }
 
 
-class UserSignupData(BaseModel):
+class UserSignupResponse(BaseModel):
     email: EmailStr
 
+class UserLoginResponse(BaseModel):
+    has_business: bool
 
 class UserLogin(BaseModel):
     email: EmailStr = Field(max_length=120)

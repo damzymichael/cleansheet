@@ -4,7 +4,7 @@ from typing import Annotated
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.database import get_db
 from app.schemas.base import BaseResponse
-from app.schemas.business import BusinessSchema
+from app.schemas.business import BusinessSchema, BusinessResponse
 from app import models
 from app.core.auth import CurrentUser, get_current_user
 
@@ -75,7 +75,7 @@ async def create_business(
     "",
     status_code=status.HTTP_200_OK,
     description="Get business information",
-    response_model=BaseResponse[BusinessSchema],
+    response_model=BaseResponse[BusinessResponse],
 )
 async def get_business(
     current_user: Annotated[CurrentUser, Depends(get_current_user)],
@@ -91,18 +91,20 @@ async def get_business(
         )
 
     if not user.business_id:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="User does not have a business",
+        return BaseResponse(
+            message="Business not updated",
+            data=BusinessResponse(default_delivery_price=0),
         )
 
     biz_result = await db.execute(
         select(models.Business).where(models.Business.id == user.business_id)
     )
     biz = biz_result.scalars().first()
+
     if biz is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="Business not found"
+        return BaseResponse(
+            message="Business not updated",
+            data=BusinessResponse(default_delivery_price=0),
         )
 
     return BaseResponse(message="Business retrieved successfully", data=biz)
