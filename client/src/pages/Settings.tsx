@@ -12,6 +12,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { useStore } from "@/store/useStore";
+import { Spinner } from "@/components/ui/spinner";
 
 const settingsSchema = z.object({
     orgName: z.string().min(1, "Organization name is required"),
@@ -50,7 +51,7 @@ export default function Settings() {
     });
 
     const { setBusinessUpdated } = useStore();
-    const { data: businessData, isLoading } = useQuery({
+    const { data: businessData, isLoading, refetch } = useQuery({
         queryKey: ["business"],
         queryFn: async () => {
             const res = await api.get<BusinessData>("/business");
@@ -58,7 +59,29 @@ export default function Settings() {
         },
     });
 
-    const {  } = useMutation({})
+    const mutation = useMutation({
+        mutationFn: async (data: SettingsFormValues) => {
+            const payload = {
+                name: data.orgName,
+                phone_number: data.phone,
+                address: data.address,
+                bank_name: data.bankName,
+                account_number: data.bankAccount,
+                account_name: data.accountName,
+                default_delivery_price: data.defaultDeliveryFee,
+            };
+            const res = await api.put("/business", payload);
+            return res.data;
+        },
+        onSuccess: () => {
+            toast.success("Settings saved successfully");
+            refetch()
+            setBusinessUpdated(true);
+        },
+        onError: (error: any) => {
+            toast.error(error.response?.data?.detail || "Failed to save settings");
+        },
+    });
 
     useEffect(() => {
         if (businessData?.data) {
@@ -81,7 +104,7 @@ export default function Settings() {
     }, [businessData, reset, setBusinessUpdated]);
 
     const onSubmit = (data: SettingsFormValues) => {
-        toast.success("Settings saved successfully");
+        mutation.mutate(data);
     };
 
     return (
@@ -233,7 +256,8 @@ export default function Settings() {
 
                         <div className="flex justify-end pt-4 font-sans">
                             <Button type="submit" size="lg" className="px-8 font-sans">
-                                Save Settings
+                                {mutation.isPending ? <Spinner/> : "Save Settings"}
+                                
                             </Button>
                         </div>
                     </form>
