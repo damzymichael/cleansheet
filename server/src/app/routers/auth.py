@@ -37,7 +37,8 @@ router = APIRouter(prefix="/auth", tags=["Auth"])
 )
 async def sign_up(user: UserSignup, db: Annotated[AsyncSession, Depends(get_db)]):
     result = await db.execute(
-        select(models.User).where(func.lower(models.User.email) == user.email.lower()),
+        select(models.User).where(func.lower(
+            models.User.email) == user.email.lower()),
     )
     existing_email = result.scalars().first()
     if existing_email:
@@ -210,7 +211,8 @@ async def refresh_token(
     await redis.set(f"refresh_lookup:{new_hash}", session_id, ex=ttl)
     await redis.hset(session_key, "refresh_hash", new_hash)
     await redis.hset(
-        session_key, "last_refreshed_at", datetime.now(timezone.utc).isoformat()
+        session_key, "last_refreshed_at", datetime.now(
+            timezone.utc).isoformat()
     )
     await redis.expire(session_key, ttl)
 
