@@ -11,6 +11,7 @@ import { api } from "@/lib/axios";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
+import { useStore } from "@/store/useStore";
 
 const settingsSchema = z.object({
     orgName: z.string().min(1, "Organization name is required"),
@@ -48,6 +49,7 @@ export default function Settings() {
         resolver: zodResolver(settingsSchema),
     });
 
+    const { setBusinessUpdated } = useStore();
     const { data: businessData, isLoading } = useQuery({
         queryKey: ["business"],
         queryFn: async () => {
@@ -56,11 +58,16 @@ export default function Settings() {
         },
     });
 
-    const { } = useMutation({})
+    const {  } = useMutation({})
 
     useEffect(() => {
         if (businessData?.data) {
             const businessInfo = businessData.data;
+            
+            // Check if name, phone number, and address are present
+            const isUpdated = Boolean(businessInfo.name && businessInfo.phone_number && businessInfo.address);
+            setBusinessUpdated(isUpdated);
+
             reset({
                 orgName: businessInfo.name || "",
                 phone: businessInfo.phone_number || "",
@@ -71,7 +78,7 @@ export default function Settings() {
                 defaultDeliveryFee: businessInfo.default_delivery_price,
             });
         }
-    }, [businessData, reset]);
+    }, [businessData, reset, setBusinessUpdated]);
 
     const onSubmit = (data: SettingsFormValues) => {
         toast.success("Settings saved successfully");

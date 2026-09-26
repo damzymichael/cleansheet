@@ -35,7 +35,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
     const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
     const [settingsMissing, setSettingsMissing] = useState(false);
     const { pathname } = useLocation();
-    const { settings } = useStore();
+    const { businessUpdated } = useStore();
     const navigate = useNavigate();
     const logout = useAuthStore(state => state.logout);
 
@@ -54,10 +54,10 @@ export default function Layout({ children }: { children: React.ReactNode }) {
     });
 
     useEffect(() => {
-        if (!settings.orgName && pathname !== "/settings") {
+        if (!businessUpdated && pathname !== "/settings") {
             setSettingsMissing(true);
         }
-    }, [pathname, settings.orgName]);
+    }, [pathname, businessUpdated]);
 
     // Pull to Refresh Implementation
     const handleRefresh = async () => {

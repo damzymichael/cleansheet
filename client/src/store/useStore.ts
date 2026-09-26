@@ -7,8 +7,10 @@ interface AppState {
     customers: Customer[];
     clothes: Cloth[];
     settings: Settings;
+    businessUpdated: boolean;
 
     // Actions
+    setBusinessUpdated: (status: boolean) => void;
     setEntries: (entries: Entry[]) => void;
     addEntry: (entry: Entry) => void;
     updateEntry: (id: number, entry: Partial<Entry>) => void;
@@ -33,6 +35,7 @@ export const useStore = create<AppState>()(
             entries: [],
             customers: [],
             clothes: [],
+            businessUpdated: true, // assume true until we check
             settings: {
                 orgName: "",
                 phone: "",
@@ -43,6 +46,7 @@ export const useStore = create<AppState>()(
                 defaultDeliveryFee: "0",
             },
 
+            setBusinessUpdated: status => set({ businessUpdated: status }),
             setEntries: entries => set({ entries }),
             addEntry: entry => set(state => ({ entries: [...state.entries, entry] })),
             updateEntry: (id, updatedEntry) =>
