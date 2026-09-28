@@ -50,7 +50,7 @@ export default function Settings() {
         resolver: zodResolver(settingsSchema),
     });
 
-    const { setBusinessUpdated } = useStore();
+    const { setBusinessUpdated, settings } = useStore();
     const { data: businessData, isLoading, refetch } = useQuery({
         queryKey: ["business"],
         queryFn: async () => {
@@ -92,13 +92,13 @@ export default function Settings() {
             setBusinessUpdated(isUpdated);
 
             reset({
-                orgName: businessInfo.name || "",
-                phone: businessInfo.phone_number || "",
-                address: businessInfo.address || "",
-                bankName: businessInfo.bank_name || "",
-                bankAccount: businessInfo.account_number || "",
-                accountName: businessInfo.account_name || "",
-                defaultDeliveryFee: businessInfo.default_delivery_price,
+                orgName: businessInfo.name || settings.orgName,
+                phone: businessInfo.phone_number || settings.phone,
+                address: businessInfo.address || settings.address,
+                bankName: businessInfo.bank_name || settings.bankName,
+                bankAccount: businessInfo.account_number || settings.bankAccount,
+                accountName: businessInfo.account_name || settings.accountName,
+                defaultDeliveryFee: businessInfo.default_delivery_price || settings.defaultDeliveryFee || 0,
             });
         }
     }, [businessData, reset, setBusinessUpdated]);
