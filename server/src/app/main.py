@@ -1,5 +1,10 @@
+from app.core.config import settings
+from fastapi.middleware.cors import CORSMiddleware
 import logging
 import uvicorn
+
+import copy
+from uvicorn.config import LOGGING_CONFIG
 
 from contextlib import asynccontextmanager
 from fastapi import FastAPI, Request, status
@@ -16,7 +21,11 @@ from app.routers.items import router as ItemsRouter
 from app.routers.business import router as BusinessRouter
 
 # Configure standard logging format for application loggers
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s | %(levelname)s | %(name)s | %(message)s",
+    datefmt="%Y-%m-%d %H:%M:%S",
+)
 logger = logging.getLogger(__name__)
 
 
@@ -41,9 +50,6 @@ async def lifespan(_app: FastAPI):
     logger.info("Redis connection closed")
 
 
-from fastapi.middleware.cors import CORSMiddleware
-from app.core.config import settings
-
 app = FastAPI(title="Cleansheet API", lifespan=lifespan)
 
 app.add_middleware(
@@ -56,7 +62,7 @@ app.add_middleware(
 
 # TODO Change Logo in html
 HOME_ROUTE_DISPLAY_HTML = """
-<div style="background: blue; width: 100vw; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh"> 
+<div style="background: blue; width: 100vw; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh">
   <svg width="100" height="75" viewBox="0 0 100 75" fill="none" xmlns="http://www.w3.org/2000/svg">
     <path d="M0 37.4999C0 16.7892 16.7893 0 37.4999 0H71.0523C72.5057 0 73.6839 1.17819 73.6839 2.63157V14.2543C73.6839 18.1905 70.493 21.3815 66.5568 21.3815H42.3682C38.2261 21.3815 34.8683 24.7393 34.8683 28.8815V44.8025C34.8683 48.9446 38.2261 52.3024 42.3683 52.3024H66.184C70.3261 52.3024 73.6839 55.6603 73.6839 59.8024V72.3681C73.6839 73.8215 72.5057 74.9997 71.0523 74.9997H37.4999C16.7893 74.9997 0 58.2105 0 37.4999Z" fill="white"/>
     <rect x="77.6328" width="22.3683" height="22.3683" rx="7.49997" fill="white"/>
@@ -119,9 +125,19 @@ app.include_router(BusinessRouter, prefix="/api")
 
 
 def main():
+    log_config = copy.deepcopy(LOGGING_CONFIG)
+    log_config["formatters"]["default"]["fmt"] = (
+        "%(asctime)s | %(levelprefix)s | %(message)s"
+    )
+    log_config["formatters"]["access"]["fmt"] = (
+        '%(asctime)s | %(levelprefix)s | %(client_addr)s - "%(request_line)s" %(status_code)s'
+    )
+    log_config["formatters"]["default"]["datefmt"] = "%Y-%m-%d %H:%M:%S"
+    log_config["formatters"]["access"]["datefmt"] = "%Y-%m-%d %H:%M:%S"
+
     """Entry point invoked by `uv run cleansheeet-api`."""
     uvicorn.run(
-        "app.main:app", host="0.0.0.0", port=8000, reload=True, log_level="info"
+        "app.main:app", host="0.0.0.0", port=8000, reload=True, log_level="info", log_config=log_config
     )
 
 
