@@ -84,6 +84,8 @@ export default function Settings() {
     });
 
     useEffect(() => {
+            console.log(settings)
+
         if (businessData?.data) {
             const businessInfo = businessData.data;
             
@@ -91,6 +93,7 @@ export default function Settings() {
             const isUpdated = Boolean(businessInfo.name && businessInfo.phone_number && businessInfo.address);
             setBusinessUpdated(isUpdated);
 
+            console.log(businessData.data)
             reset({
                 orgName: businessInfo.name || settings.orgName,
                 phone: businessInfo.phone_number || settings.phone,
