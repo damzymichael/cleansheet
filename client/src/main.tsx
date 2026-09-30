@@ -4,7 +4,7 @@ import "./index.css";
 import App from "./App.tsx";
 import * as Sentry from "@sentry/react";
 
-console.log(import.meta.env.VITE_SENTRY_DSN);
+// console.log(import.meta.env.VITE_SENTRY_DSN);
 
 Sentry.init({
     dsn: "https://625443a93f299a7331b8ad8a6f7f6c0c@o4510430643224576.ingest.de.sentry.io/4511808785875024",
