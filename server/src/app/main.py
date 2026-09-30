@@ -19,6 +19,7 @@ from app.routers.users import router as UsersRouter
 from app.routers.auth import router as AuthRouter
 from app.routers.items import router as ItemsRouter
 from app.routers.business import router as BusinessRouter
+from app.routers.customers import router as CustomersRouter
 
 # Configure standard logging format for application loggers
 logging.basicConfig(
@@ -122,6 +123,7 @@ app.include_router(UsersRouter, prefix="/api")
 app.include_router(AuthRouter, prefix="/api")
 app.include_router(ItemsRouter, prefix="/api")
 app.include_router(BusinessRouter, prefix="/api")
+app.include_router(CustomersRouter, prefix="/api")
 
 
 def main():

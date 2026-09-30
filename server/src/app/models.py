@@ -3,7 +3,7 @@ import enum
 
 from datetime import datetime
 from typing import List
-from sqlalchemy import DateTime, func, Enum, String, UUID, Integer, ForeignKey, Boolean
+from sqlalchemy import DateTime, func, Enum, String, UUID, Integer, ForeignKey, Boolean, BigInteger, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.core.database import Base
 
@@ -38,7 +38,8 @@ class User(Base):
         nullable=True,
     )
     # Many Users -> One Business relationship
-    business: Mapped["Business"] = relationship("Business", back_populates="users")
+    business: Mapped["Business"] = relationship(
+        "Business", back_populates="users")
 
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now()
@@ -91,14 +92,19 @@ class Customer(Base):
     id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
     )
-    name: Mapped[str] = mapped_column(String(50), unique=True)
-    phone_number: Mapped[str] = mapped_column(String(14), unique=True)
+    # Removed global unique=True so it can be unique per business
+    name: Mapped[str] = mapped_column(String(50))
+    phone_number: Mapped[str] = mapped_column(String(14))
     address: Mapped[str] = mapped_column(String(200))
+    id_in_browser: Mapped[int | None] = mapped_column(
+        BigInteger, nullable=True)
 
     business_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), ForeignKey("businesses.id", ondelete="CASCADE"), index=True
     )
-    business: Mapped["Business"] = relationship("Business", back_populates="customers")
+    business: Mapped["Business"] = relationship(
+        "Business", back_populates="customers"
+    )
     entries: Mapped[List["Entry"]] = relationship(
         "Entry", back_populates="customer", cascade="all, delete-orphan"
     )
@@ -108,6 +114,14 @@ class Customer(Base):
     )
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
+    )
+
+    __table_args__ = (
+        UniqueConstraint("business_id", "name",
+                         name="uq_business_customer_name"),
+        UniqueConstraint(
+            "business_id", "phone_number", name="uq_business_customer_phone"
+        ),
     )
 
 
@@ -125,7 +139,8 @@ class Item(Base):
     business_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), ForeignKey("businesses.id", ondelete="CASCADE"), index=True
     )
-    business: Mapped["Business"] = relationship("Business", back_populates="items")
+    business: Mapped["Business"] = relationship(
+        "Business", back_populates="items")
 
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now()
@@ -151,15 +166,19 @@ class Entry(Base):
         Enum(Collection_Mode, native_enum=False)
     )
 
-    discount_price: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
-    delivery_fee: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
+    discount_price: Mapped[int] = mapped_column(
+        Integer, default=0, server_default="0")
+    delivery_fee: Mapped[int] = mapped_column(
+        Integer, default=0, server_default="0")
 
-    paid: Mapped[bool] = mapped_column(Boolean, default=False, server_default="False")
+    paid: Mapped[bool] = mapped_column(
+        Boolean, default=False, server_default="False")
 
     customer_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), ForeignKey("customers.id", ondelete="CASCADE"), index=True
     )
-    customer: Mapped["Customer"] = relationship("Customer", back_populates="entries")
+    customer: Mapped["Customer"] = relationship(
+        "Customer", back_populates="entries")
 
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now()
