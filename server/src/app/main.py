@@ -80,6 +80,7 @@ HOME_ROUTE_DISPLAY_HTML = """
 # 1. Override standard HTTP Exceptions
 @app.exception_handler(StarletteHTTPException)
 async def http_exception_handler(request: Request, exc: StarletteHTTPException):
+    logger.error(f"HTTP exception: {exc.detail}", exc_info=exc)
     return JSONResponse(
         status_code=exc.status_code,
         content={"success": False, "message": exc.detail, "errors": None},
@@ -89,6 +90,7 @@ async def http_exception_handler(request: Request, exc: StarletteHTTPException):
 # 2. Override Pydantic Validation Errors (e.g., missing fields)
 @app.exception_handler(RequestValidationError)
 async def validation_exception_handler(request: Request, exc: RequestValidationError):
+    logger.error(f"Validation error: {exc.errors()}", exc_info=exc)
     return JSONResponse(
         status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
         content={
