@@ -27,6 +27,20 @@ const customerSchema = z.object({
 
 type CustomerFormValues = z.infer<typeof customerSchema>;
 
+type CustomersData = {
+    success: boolean;
+    message: string;
+    data: {
+        id: string;
+        name: string;
+        phone_number: string;
+        id_in_browser: number;
+        number_of_entries: string;
+        total_value: string;
+    }[];
+};
+
+// TODO number of entries, total amount, Single customer page
 export default function Customers() {
     const navigate = useNavigate();
     const queryClient = useQueryClient();
@@ -67,8 +81,8 @@ export default function Customers() {
     const { data: serverCustomers = [], isLoading: isLoadingCustomers } = useQuery({
         queryKey: ["customers"],
         queryFn: async () => {
-            const { data } = await api.get("/customers");
-            return data;
+            const { data } = await api.get<CustomersData>("/customers");
+            return data.data;
         },
         enabled: customerDataMigrated, // Only fetch from server if migrated
     });
@@ -316,7 +330,7 @@ export default function Customers() {
                             return (
                                 <div
                                     key={customer.id}
-                                    onClick={() => navigate(`/customers/${customer.id}`)}
+                                    // onClick={() => navigate(`/customers/${customer.id}`)}
                                     className="flex flex-col md:flex-row items-start md:items-center justify-between p-5 border rounded-xl bg-background/50 hover:border-primary/50 hover:bg-muted/30 transition-all duration-200 gap-4 group cursor-pointer"
                                 >
                                     <div className="flex flex-col md:flex-row items-start md:items-center gap-6 flex-1 w-full">

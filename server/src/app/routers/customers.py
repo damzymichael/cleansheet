@@ -97,13 +97,40 @@ async def get_customers(
     result = await db.execute(select(models.User).where(models.User.id == current_user.user_id))
     user = result.scalars().first()
     if not user or not user.business_id:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
-                            detail="User or business not found")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User or business not found"
+        )
 
-    customers_result = await db.execute(select(models.Customer).where(models.Customer.business_id == user.business_id))
-    customers = customers_result.scalars().all()
+    # Query with specific column selection, filtering, and descending order by created_at
+    customers_stmt = (
+        select(
+            models.Customer.id,
+            models.Customer.name,
+            models.Customer.phone_number,
+            models.Customer.id_in_browser,
+        )
+        .where(models.Customer.business_id == user.business_id)
+        .order_by(models.Customer.created_at.desc())
+    )
+    
+    customers_result = await db.execute(customers_stmt)
+    rows = customers_result.all()
 
-    return customers
+    # Map the rows to include number_of_entries and total_value set to 0
+    customers = [
+        {
+            "id": row.id,
+            "name": row.name,
+            "phone_number": row.phone_number,
+            "id_in_browser": row.id_in_browser,
+            "number_of_entries": 0,
+            "total_value": 0,
+        }
+        for row in rows
+    ]
+
+    return BaseResponse(message="Customers retrieved successfully", data=customers)
 
 
 @router.put(
