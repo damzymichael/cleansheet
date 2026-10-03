@@ -94,7 +94,7 @@ class Customer(Base):
     )
     # Removed global unique=True so it can be unique per business
     name: Mapped[str] = mapped_column(String(50))
-    phone_number: Mapped[str] = mapped_column(String(14))
+    phone_number: Mapped[str] = mapped_column(String(20))
     address: Mapped[str] = mapped_column(String(200))
     id_in_browser: Mapped[int | None] = mapped_column(
         BigInteger, nullable=True)
