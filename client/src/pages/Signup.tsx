@@ -234,7 +234,8 @@ function Signup() {
                             </FieldGroup>
 
                             <Field className="mt-10">
-                                <Button disabled={isPending} type="submit" className="font-semibold">
+                                 {/* disabled={isPending} */}
+                                <Button disabled={true} type="submit" className="font-semibold">
                                     {isPending ? (
                                         <>
                                             <Loader2 className="mr-2 h-4 w-4 animate-spin" />

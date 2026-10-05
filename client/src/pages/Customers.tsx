@@ -34,6 +34,7 @@ type CustomersData = {
         id: string;
         name: string;
         phone_number: string;
+        address: string;
         id_in_browser: number;
         number_of_entries: string;
         total_value: string;

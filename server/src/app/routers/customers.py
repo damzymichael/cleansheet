@@ -108,6 +108,7 @@ async def get_customers(
             models.Customer.id,
             models.Customer.name,
             models.Customer.phone_number,
+            models.Customer.address,
             models.Customer.id_in_browser,
         )
         .where(models.Customer.business_id == user.business_id)
@@ -123,6 +124,7 @@ async def get_customers(
             "id": row.id,
             "name": row.name,
             "phone_number": row.phone_number,
+            "address": row.address,
             "id_in_browser": row.id_in_browser,
             "number_of_entries": 0,
             "total_value": 0,
