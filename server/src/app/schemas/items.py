@@ -7,6 +7,7 @@ class ItemCreate(BaseModel):
     wash_price: Optional[int] = None
     iron_price: Optional[int] = None
     starch_price: Optional[int] = None
+    id_in_browser: Optional[int] = None
 
     @model_validator(mode="after")
     def check_at_least_one_price(self):

@@ -131,10 +131,12 @@ class Item(Base):
     id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
     )
-    name: Mapped[str] = mapped_column(String(50), unique=True)
+    name: Mapped[str] = mapped_column(String(50))
     wash_price: Mapped[int] = mapped_column(Integer)
     iron_price: Mapped[int] = mapped_column(Integer)
     starch_price: Mapped[int] = mapped_column(Integer)
+    id_in_browser: Mapped[int | None] = mapped_column(
+        BigInteger, nullable=True)
 
     business_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), ForeignKey("businesses.id", ondelete="CASCADE"), index=True
@@ -147,6 +149,10 @@ class Item(Base):
     )
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
+    )
+
+    __table_args__ = (
+        UniqueConstraint("business_id", "name", name="uq_business_item_name"),
     )
 
 
@@ -187,7 +193,7 @@ class Entry(Base):
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
     )
 
-
+# This should have washing, ironing and starching 
 # class EntryItem(Base):
 #     __tablename__ = "entryitems"
 

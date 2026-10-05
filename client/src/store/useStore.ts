@@ -9,10 +9,12 @@ interface AppState {
     settings: Settings;
     businessUpdated: boolean;
     customerDataMigrated: boolean;
+    clothesMigrated: boolean;
 
     // Actions
     setBusinessUpdated: (status: boolean) => void;
     setCustomerDataMigrated: (status: boolean) => void;
+    setClothesMigrated: (status: boolean) => void;
     setEntries: (entries: Entry[]) => void;
     addEntry: (entry: Entry) => void;
     updateEntry: (id: number, entry: Partial<Entry>) => void;
@@ -39,6 +41,7 @@ export const useStore = create<AppState>()(
             clothes: [],
             businessUpdated: true, // assume true until we check
             customerDataMigrated: false, // default to false
+            clothesMigrated: false,
             settings: {
                 orgName: "",
                 phone: "",
@@ -51,6 +54,7 @@ export const useStore = create<AppState>()(
 
             setBusinessUpdated: status => set({ businessUpdated: status }),
             setCustomerDataMigrated: status => set({ customerDataMigrated: status }),
+            setClothesMigrated: status => set({ clothesMigrated: status }),
             setEntries: entries => set({ entries }),
             addEntry: entry => set(state => ({ entries: [...state.entries, entry] })),
             updateEntry: (id, updatedEntry) =>

@@ -1,7 +1,10 @@
 export interface Cloth {
-    id: number;
+    id: number | string;
     name: string;
-    price: number;
+    price?: number;
+    washPrice: number;
+    ironingPrice: number;
+    starchPrice: number;
     category?: string;
 }
 
