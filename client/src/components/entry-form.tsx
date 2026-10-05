@@ -47,7 +47,7 @@ export function EntryForm({
             clothId: selectedCloth.id.toString(),
             clothName: selectedCloth.name,
             quantity: parseInt(quantity),
-            price: selectedCloth.price * parseInt(quantity),
+            price: (selectedCloth.price ?? selectedCloth.washPrice ?? 0) * parseInt(quantity),
         };
         setItems([...items, newItem]);
         setSelectedCloth(null);
@@ -218,7 +218,7 @@ export function EntryForm({
                                                             setClothOpen(false);
                                                         }}
                                                     >
-                                                        {cloth.name} (₦{cloth.price.toLocaleString()})
+                                                        {cloth.name} (₦{(cloth.price ?? cloth.washPrice ?? 0).toLocaleString()})
                                                     </CommandItem>
                                                 ))}
                                             </CommandGroup>
