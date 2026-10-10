@@ -13,7 +13,7 @@ from app.core.auth import CurrentUser, get_current_user
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/entries", tags=["Entries"])
 
-
+# Todo Bulk add entries code removal
 @router.post(
     "/bulk",
     status_code=status.HTTP_201_CREATED,
