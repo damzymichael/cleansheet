@@ -16,15 +16,21 @@ export interface Customer {
 }
 
 export interface EntryItem {
-    clothId: string;
+    id?: string;
+    clothId?: string;
     clothName: string;
     quantity: number;
     price: number;
+    wash?: boolean;
+    iron?: boolean;
+    starch?: boolean;
 }
 
 export interface Entry {
-    id: number;
+    id: number | string;
+    id_in_browser?: number | null;
     customerName: string;
+    customerId?: string;
     items: EntryItem[];
     dueDate: string;
     isPaid: boolean;

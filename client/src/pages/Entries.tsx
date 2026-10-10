@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Plus, Trash2, Search, Share2, Check, Loader2 } from "lucide-react";
+import { Plus, Trash2, Search, Share2, Check, Loader2, UploadCloud } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -15,16 +15,104 @@ import { toast } from "sonner";
 import { useStore } from "@/store/useStore";
 import type { Entry } from "@/lib/types";
 import * as Sentry from "@sentry/react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { api } from "@/lib/axios";
 
 export default function Entries() {
     const navigate = useNavigate();
-    const { entries, updateEntry, deleteEntry, settings } = useStore();
+    const queryClient = useQueryClient();
+    const {
+        entries: localEntries,
+        entriesMigrated,
+        setEntriesMigrated,
+        updateEntry,
+        deleteEntry,
+        settings,
+    } = useStore();
     const [filterStatus, setFilterStatus] = useState("all");
     const [searchTerm, setSearchTerm] = useState("");
 
+    // TanStack Query: Fetch Entries
+    const { data: serverEntries = [], isLoading: isLoadingEntries } = useQuery({
+        queryKey: ["entries"],
+        queryFn: async () => {
+            const { data } = await api.get<{ data: any[]; message: string; success: boolean }>("/entries");
+            return data.data;
+        },
+        enabled: entriesMigrated,
+    });
+
+    // Determine which entries to display
+    const displayEntries: Entry[] = entriesMigrated
+        ? serverEntries.map((e: any) => ({
+            id: e.id,
+            id_in_browser: e.id_in_browser,
+            customerName: e.customer_name,
+            customerId: e.customer_id,
+            items: (e.items || []).map((item: any) => ({
+                id: item.id,
+                clothId: item.item_id,
+                clothName: item.cloth_name,
+                quantity: item.quantity,
+                price: item.price,
+                wash: item.wash,
+                iron: item.iron,
+                starch: item.starch,
+            })),
+            dueDate: e.due_date || e.created_at,
+            isPaid: e.paid,
+            price: e.price,
+            createdAt: e.created_at,
+            serviceType: (e.collection_mode || "pickup").toLowerCase() as "pickup" | "delivery",
+            deliveryFee: e.delivery_fee,
+            discount: e.discount_price,
+        }))
+        : localEntries;
+
+    // TanStack Mutation: Bulk Migrate Entries
+    const migrateMutation = useMutation({
+        mutationFn: async (entriesToMigrate: Entry[]) => {
+            const payload = entriesToMigrate.map(entry => ({
+                customer_name: entry.customerName,
+                items: entry.items.map(item => ({
+                    cloth_id: item.clothId,
+                    cloth_name: item.clothName,
+                    quantity: item.quantity,
+                    wash: true, // tick only wash for every entry item
+                    iron: false,
+                    starch: false,
+                    price: item.price,
+                })),
+                due_date: entry.dueDate ? new Date(entry.dueDate).toISOString() : null,
+                collection_mode: (entry.serviceType || "pickup").toLowerCase(),
+                delivery_fee: entry.deliveryFee || 0,
+                discount_price: entry.discount || 0,
+                paid: entry.isPaid || false,
+                id_in_browser: typeof entry.id === "number" ? entry.id : null,
+                created_at: entry.createdAt ? new Date(entry.createdAt).toISOString() : null,
+            }));
+            const { data } = await api.post("/entries/bulk", payload);
+            return data;
+        },
+        onSuccess: () => {
+            setEntriesMigrated(true);
+            queryClient.invalidateQueries({ queryKey: ["entries"] });
+            toast.success("Entries data migrated successfully!");
+        },
+        onError: (error: any) => {
+            console.error("Entries migration error:", error);
+            const message = error.response?.data?.message || "Failed to migrate entries data";
+            toast.error(message);
+        },
+    });
+
+    const handleMigrateClick = () => {
+        migrateMutation.mutate(localEntries);
+    };
+
     // Delete Confirmation Logic
     const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
-    const [entryToDelete, setEntryToDelete] = useState<number | null>(null);
+    const [entryToDelete, setEntryToDelete] = useState<string | number | null>(null);
 
     // Show More Dialog State
     const [showMoreEntry, setShowMoreEntry] = useState<Entry | null>(null);
@@ -41,7 +129,7 @@ export default function Entries() {
     const [isInvoiceGenerated, setIsInvoiceGenerated] = useState(false);
     const [invoiceBlob, setInvoiceBlob] = useState<Blob | null>(null);
 
-    const handleDeleteEntry = (id: number) => {
+    const handleDeleteEntry = (id: string | number) => {
         setEntryToDelete(id);
         setIsDeleteDialogOpen(true);
     };
@@ -170,12 +258,14 @@ export default function Entries() {
     };
 
 
-    const filteredEntries = entries.filter(entry => {
+    const filteredEntries = displayEntries.filter(entry => {
         const matchesStatus =
             filterStatus === "all" ||
             (filterStatus === "paid" && entry.isPaid) ||
             (filterStatus === "unpaid" && !entry.isPaid);
-        const matchesSearch = entry.customerName.toLowerCase().includes(searchTerm.toLowerCase());
+        const matchesSearch =
+            entry.customerName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            entry.items.some(item => item.clothName.toLowerCase().includes(searchTerm.toLowerCase()));
         return matchesStatus && matchesSearch;
     });
 
@@ -190,10 +280,23 @@ export default function Entries() {
                             Manage all customer laundry entries
                         </p>
                     </div>
-                    <Button onClick={() => navigate("/entries/new")} className="gap-2 w-full sm:w-auto" size="lg">
-                        <Plus className="w-5 h-5" />
-                        New Entry
-                    </Button>
+                    <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
+                        {!entriesMigrated && (
+                            <Button
+                                onClick={handleMigrateClick}
+                                variant="outline"
+                                className="border-primary text-primary hover:bg-primary/10 gap-2 h-11"
+                                disabled={migrateMutation.isPending || localEntries.length === 0}
+                            >
+                                <UploadCloud className="h-4 w-4" />
+                                {migrateMutation.isPending ? "Migrating..." : "Migrate Data"}
+                            </Button>
+                        )}
+                        <Button onClick={() => navigate("/entries/new")} className="gap-2 w-full sm:w-auto" size="lg">
+                            <Plus className="w-5 h-5" />
+                            New Entry
+                        </Button>
+                    </div>
                 </div>
 
                 {/* Filters */}
@@ -234,7 +337,12 @@ export default function Entries() {
                         </CardDescription>
                     </CardHeader>
                     <CardContent className="pt-6 font-sans">
-                        {filteredEntries.length === 0 ? (
+                        {isLoadingEntries && entriesMigrated ? (
+                            <div className="flex flex-col items-center justify-center py-12 gap-3 text-muted-foreground">
+                                <Loader2 className="w-8 h-8 animate-spin text-primary" />
+                                <p className="text-lg">Loading entries...</p>
+                            </div>
+                        ) : filteredEntries.length === 0 ? (
                             <div className="text-center py-12 text-muted-foreground border-2 border-dashed rounded-lg">
                                 <p className="text-lg">No entries found matching your criteria</p>
                                 <Button

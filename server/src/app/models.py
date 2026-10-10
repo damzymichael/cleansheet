@@ -143,6 +143,9 @@ class Item(Base):
     )
     business: Mapped["Business"] = relationship(
         "Business", back_populates="items")
+    entry_items: Mapped[List["EntryItem"]] = relationship(
+        "EntryItem", back_populates="item", cascade="all, delete-orphan"
+    )
 
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now()
@@ -180,11 +183,22 @@ class Entry(Base):
     paid: Mapped[bool] = mapped_column(
         Boolean, default=False, server_default="False")
 
+    due_date: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    id_in_browser: Mapped[int | None] = mapped_column(
+        BigInteger, nullable=True
+    )
+
     customer_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), ForeignKey("customers.id", ondelete="CASCADE"), index=True
     )
     customer: Mapped["Customer"] = relationship(
         "Customer", back_populates="entries")
+
+    entry_items: Mapped[List["EntryItem"]] = relationship(
+        "EntryItem", back_populates="entry", cascade="all, delete-orphan"
+    )
 
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now()
@@ -193,24 +207,38 @@ class Entry(Base):
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
     )
 
-# This should have washing, ironing and starching 
-# class EntryItem(Base):
-#     __tablename__ = "entryitems"
 
-#     id: Mapped[uuid.UUID] = mapped_column(
-#         UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
-#     )
+class EntryItem(Base):
+    __tablename__ = "entry_items"
 
-#     entry_id: Mapped[uuid.UUID] = mapped_column(
-#         UUID(as_uuid=True), ForeignKey("entries.id", ondelete="CASCADE"), index=True
-#     )
-#     item_id: Mapped[uuid.UUID] = mapped_column(
-#         UUID(as_uuid=True), ForeignKey("items.id", ondelete="CASCADE"), index=True
-#     )
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
+    )
 
-#     # Store quantity per item in this specific entry
-#     quantity: Mapped[int] = mapped_column(Integer, default=1)
+    entry_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("entries.id", ondelete="CASCADE"), index=True
+    )
+    item_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("items.id", ondelete="CASCADE"), index=True
+    )
 
-#     # Relationships
-#     entry: Mapped["Entry"] = relationship("Entry", back_populates="entry_items")
-#     item: Mapped["Item"] = relationship("Item", back_populates="entry_items")
+    quantity: Mapped[int] = mapped_column(
+        Integer, default=1, server_default="1")
+    wash: Mapped[bool] = mapped_column(
+        Boolean, default=False, server_default="False")
+    iron: Mapped[bool] = mapped_column(
+        Boolean, default=False, server_default="False")
+    starch: Mapped[bool] = mapped_column(
+        Boolean, default=False, server_default="False")
+
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now()
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
+    )
+
+    # Relationships
+    entry: Mapped["Entry"] = relationship(
+        "Entry", back_populates="entry_items")
+    item: Mapped["Item"] = relationship("Item", back_populates="entry_items")

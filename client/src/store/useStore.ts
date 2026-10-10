@@ -10,15 +10,17 @@ interface AppState {
     businessUpdated: boolean;
     customerDataMigrated: boolean;
     clothesMigrated: boolean;
+    entriesMigrated: boolean;
 
     // Actions
     setBusinessUpdated: (status: boolean) => void;
     setCustomerDataMigrated: (status: boolean) => void;
     setClothesMigrated: (status: boolean) => void;
+    setEntriesMigrated: (status: boolean) => void;
     setEntries: (entries: Entry[]) => void;
     addEntry: (entry: Entry) => void;
-    updateEntry: (id: number, entry: Partial<Entry>) => void;
-    deleteEntry: (id: number) => void;
+    updateEntry: (id: number | string, entry: Partial<Entry>) => void;
+    deleteEntry: (id: number | string) => void;
 
     setCustomers: (customers: Customer[]) => void;
     addCustomer: (customer: Customer) => void;
@@ -42,6 +44,7 @@ export const useStore = create<AppState>()(
             businessUpdated: true, // assume true until we check
             customerDataMigrated: false, // default to false
             clothesMigrated: false,
+            entriesMigrated: false,
             settings: {
                 orgName: "",
                 phone: "",
@@ -55,6 +58,7 @@ export const useStore = create<AppState>()(
             setBusinessUpdated: status => set({ businessUpdated: status }),
             setCustomerDataMigrated: status => set({ customerDataMigrated: status }),
             setClothesMigrated: status => set({ clothesMigrated: status }),
+            setEntriesMigrated: status => set({ entriesMigrated: status }),
             setEntries: entries => set({ entries }),
             addEntry: entry => set(state => ({ entries: [...state.entries, entry] })),
             updateEntry: (id, updatedEntry) =>
