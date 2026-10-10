@@ -25,7 +25,8 @@ async def bulk_add_entries(
     current_user: Annotated[CurrentUser, Depends(get_current_user)],
     db: Annotated[AsyncSession, Depends(get_db)],
 ):
-    logger.info("Incoming bulk entries payload: %s", [e.model_dump() for e in entries])
+    logger.info("Incoming bulk entries payload: %s",
+                [e.model_dump() for e in entries])
     result = await db.execute(select(models.User).where(models.User.id == current_user.user_id))
     user = result.scalars().first()
     if not user or not user.business_id:
@@ -36,7 +37,8 @@ async def bulk_add_entries(
 
     # Pre-fetch all customers for this business to quickly map customer_name -> customer
     cust_res = await db.execute(
-        select(models.Customer).where(models.Customer.business_id == user.business_id)
+        select(models.Customer).where(
+            models.Customer.business_id == user.business_id)
     )
     all_customers = cust_res.scalars().all()
     customers_by_name = {}
@@ -44,7 +46,8 @@ async def bulk_add_entries(
         customers_by_name[c.name.strip().lower()] = c
         customers_by_name[c.name.strip().rstrip(".").strip().lower()] = c
         customers_by_name[c.name.replace(".", "").strip().lower()] = c
-    customers_by_browser_id = {c.id_in_browser: c for c in all_customers if c.id_in_browser is not None}
+    customers_by_browser_id = {
+        c.id_in_browser: c for c in all_customers if c.id_in_browser is not None}
 
     # Pre-fetch all items for this business to quickly map cloth_name/id -> item
     item_res = await db.execute(
@@ -53,11 +56,13 @@ async def bulk_add_entries(
     all_items = item_res.scalars().all()
     items_by_name = {i.name.strip().lower(): i for i in all_items}
     items_by_uuid = {str(i.id): i for i in all_items}
-    items_by_browser_id = {i.id_in_browser: i for i in all_items if i.id_in_browser is not None}
+    items_by_browser_id = {
+        i.id_in_browser: i for i in all_items if i.id_in_browser is not None}
 
     # Check for already migrated entries by id_in_browser to avoid duplicates
     existing_browser_ids = set()
-    browser_ids_in_payload = [e.id_in_browser for e in entries if e.id_in_browser is not None]
+    browser_ids_in_payload = [
+        e.id_in_browser for e in entries if e.id_in_browser is not None]
     if browser_ids_in_payload:
         existing_res = await db.execute(
             select(models.Entry.id_in_browser)
@@ -69,15 +74,30 @@ async def bulk_add_entries(
         )
         existing_browser_ids = set(existing_res.scalars().all())
 
+    # ===== TEMP MIGRATION FIX START (remove after migration) =====
+    CUSTOMER_NAME_FIXES = {
+        "mr. tuky": "Master Tuky",
+        "mr afeez opeyemi.": "Mr Afeez Opeyemi",
+    }
+    # ===== TEMP MIGRATION FIX END =====
+
     for entry_data in entries:
         # Skip if already migrated
         if entry_data.id_in_browser is not None and entry_data.id_in_browser in existing_browser_ids:
             continue
 
+        # ===== TEMP MIGRATION FIX START (remove after migration) =====
+        entry_data.customer_name = CUSTOMER_NAME_FIXES.get(
+            entry_data.customer_name.strip().lower(),
+            entry_data.customer_name,
+        )
+        # ===== TEMP MIGRATION FIX END =====
+
         # Find customer (stripping fullstops if present)
         clean_name = entry_data.customer_name.strip().lower()
         dot_stripped_name = entry_data.customer_name.strip().rstrip(".").strip().lower()
-        dot_removed_name = entry_data.customer_name.replace(".", "").strip().lower()
+        dot_removed_name = entry_data.customer_name.replace(
+            ".", "").strip().lower()
 
         customer = (
             customers_by_name.get(clean_name)
@@ -170,7 +190,8 @@ async def get_entries(
         .where(models.Customer.business_id == user.business_id)
         .options(
             selectinload(models.Entry.customer),
-            selectinload(models.Entry.entry_items).selectinload(models.EntryItem.item),
+            selectinload(models.Entry.entry_items).selectinload(
+                models.EntryItem.item),
         )
         .order_by(models.Entry.created_at.desc())
     )
@@ -189,7 +210,7 @@ async def get_entries(
                 unit_price += ei.item.iron_price
             if ei.starch:
                 unit_price += ei.item.starch_price
-            
+
             line_price = unit_price * ei.quantity
             subtotal += line_price
             items_list.append({
