@@ -36,7 +36,11 @@ async def bulk_add_entries(
         select(models.Customer).where(models.Customer.business_id == user.business_id)
     )
     all_customers = cust_res.scalars().all()
-    customers_by_name = {c.name.strip().lower(): c for c in all_customers}
+    customers_by_name = {}
+    for c in all_customers:
+        customers_by_name[c.name.strip().lower()] = c
+        customers_by_name[c.name.strip().rstrip(".").strip().lower()] = c
+        customers_by_name[c.name.replace(".", "").strip().lower()] = c
     customers_by_browser_id = {c.id_in_browser: c for c in all_customers if c.id_in_browser is not None}
 
     # Pre-fetch all items for this business to quickly map cloth_name/id -> item
@@ -67,8 +71,16 @@ async def bulk_add_entries(
         if entry_data.id_in_browser is not None and entry_data.id_in_browser in existing_browser_ids:
             continue
 
-        # Find customer
-        customer = customers_by_name.get(entry_data.customer_name.strip().lower())
+        # Find customer (stripping fullstops if present)
+        clean_name = entry_data.customer_name.strip().lower()
+        dot_stripped_name = entry_data.customer_name.strip().rstrip(".").strip().lower()
+        dot_removed_name = entry_data.customer_name.replace(".", "").strip().lower()
+
+        customer = (
+            customers_by_name.get(clean_name)
+            or customers_by_name.get(dot_stripped_name)
+            or customers_by_name.get(dot_removed_name)
+        )
         if not customer and entry_data.id_in_browser and entry_data.id_in_browser in customers_by_browser_id:
             customer = customers_by_browser_id[entry_data.id_in_browser]
 
