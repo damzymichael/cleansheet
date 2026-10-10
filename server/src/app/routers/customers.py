@@ -1,7 +1,8 @@
-from fastapi import APIRouter, status, Depends, HTTPException
-from typing import Annotated, List
+import math
+from fastapi import APIRouter, status, Depends, HTTPException, Query
+from typing import Annotated, List, Optional
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
+from sqlalchemy import select, func, or_
 from app.core.database import get_db
 from app.schemas.base import BaseResponse
 from app.schemas.customers import CustomerCreate
@@ -88,11 +89,15 @@ async def add_customer(
 @router.get(
     "",
     status_code=status.HTTP_200_OK,
-    description="Get all customers",
+    description="Get all customers with pagination",
 )
 async def get_customers(
     current_user: Annotated[CurrentUser, Depends(get_current_user)],
     db: Annotated[AsyncSession, Depends(get_db)],
+    page: int = Query(1, ge=1, description="Page number"),
+    limit: int = Query(10, ge=1, le=100, description="Items per page"),
+    search: Optional[str] = Query(
+        None, description="Search term for name or phone"),
 ):
     result = await db.execute(select(models.User).where(models.User.id == current_user.user_id))
     user = result.scalars().first()
@@ -102,7 +107,21 @@ async def get_customers(
             detail="User or business not found"
         )
 
-    # Query with specific column selection, filtering, and descending order by created_at
+    base_conditions = [models.Customer.business_id == user.business_id]
+    if search and search.strip():
+        term = f"%{search.strip()}%"
+        base_conditions.append(
+            or_(
+                models.Customer.name.ilike(term),
+                models.Customer.phone_number.ilike(term),
+            )
+        )
+
+    count_stmt = select(func.count(models.Customer.id)).where(*base_conditions)
+    total_items = (await db.execute(count_stmt)).scalar() or 0
+    total_pages = math.ceil(total_items / limit) if total_items > 0 else 1
+
+    offset = (page - 1) * limit
     customers_stmt = (
         select(
             models.Customer.id,
@@ -111,14 +130,15 @@ async def get_customers(
             models.Customer.address,
             models.Customer.id_in_browser,
         )
-        .where(models.Customer.business_id == user.business_id)
+        .where(*base_conditions)
         .order_by(models.Customer.created_at.desc())
+        .offset(offset)
+        .limit(limit)
     )
-    
+
     customers_result = await db.execute(customers_stmt)
     rows = customers_result.all()
 
-    # Map the rows to include number_of_entries and total_value set to 0
     customers = [
         {
             "id": row.id,
@@ -132,7 +152,20 @@ async def get_customers(
         for row in rows
     ]
 
-    return BaseResponse(message="Customers retrieved successfully", data=customers)
+    return BaseResponse(
+        message="Customers retrieved successfully",
+        data={
+            "items": customers,
+            "meta": {
+                "page": page,
+                "limit": limit,
+                "total_items": total_items,
+                "total_pages": total_pages,
+                "has_next": page < total_pages,
+                "has_previous": page > 1,
+            },
+        },
+    )
 
 
 @router.put(
@@ -203,4 +236,4 @@ async def delete_customer(
         await db.rollback()
         raise HTTPException(status_code=400, detail=str(e))
 
-    return {"message": "Customer deleted successfully"}
+    return BaseResponse(message="Customer deleted successfully")

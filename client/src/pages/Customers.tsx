@@ -10,7 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import Layout from "@/components/layout";
 import { ConfirmDeleteDialog } from "@/components/confirm-delete-dialog";
 import { useStore } from "@/store/useStore";
-import type { Customer } from "@/lib/types";
+import type { Customer, ApiResponse, PaginatedData, ServerCustomer } from "@/lib/types";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/axios";
 import { AxiosError } from "axios";
@@ -18,6 +18,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { toast } from "sonner";
+import { Pagination } from "@/components/pagination";
 
 const customerSchema = z.object({
     name: z.string().min(3, "Name must be at least 3 characters").max(50, "Name must be at most 50 characters"),
@@ -26,20 +27,6 @@ const customerSchema = z.object({
 });
 
 type CustomerFormValues = z.infer<typeof customerSchema>;
-
-type CustomersData = {
-    success: boolean;
-    message: string;
-    data: {
-        id: string;
-        name: string;
-        phone_number: string;
-        address: string;
-        id_in_browser: number;
-        number_of_entries: string;
-        total_value: string;
-    }[];
-};
 
 // TODO number of entries, total amount, Single customer page
 export default function Customers() {
@@ -58,6 +45,8 @@ export default function Customers() {
     const [showDialog, setShowDialog] = useState(false);
     const [editingId, setEditingId] = useState<string | number | null>(null);
     const [searchTerm, setSearchTerm] = useState("");
+    const [page, setPage] = useState(1);
+    const limit = 10;
 
     // Delete Confirmation Logic
     const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
@@ -79,19 +68,46 @@ export default function Customers() {
     });
 
     // TanStack Query: Fetch Customers
-    const { data: serverCustomers = [], isLoading: isLoadingCustomers } = useQuery({
-        queryKey: ["customers"],
+    const { data: serverCustomersResponse, isLoading: isLoadingCustomers } = useQuery<PaginatedData<ServerCustomer>>({
+        queryKey: ["customers", page, searchTerm],
         queryFn: async () => {
-            const { data } = await api.get<CustomersData>("/customers");
+            const { data } = await api.get<ApiResponse<PaginatedData<ServerCustomer>>>("/customers", {
+                params: {
+                    page,
+                    limit,
+                    search: searchTerm || undefined,
+                },
+            });
             return data.data;
         },
         enabled: customerDataMigrated, // Only fetch from server if migrated
     });
 
+    const serverItems = serverCustomersResponse?.items || [];
+
+    const serverMeta = serverCustomersResponse?.meta || {
+        page: 1,
+        limit,
+        total_items: serverItems.length,
+        total_pages: Math.ceil(serverItems.length / limit) || 1,
+        has_next: false,
+        has_previous: false,
+    };
+
+    const filteredLocal = localCustomers.filter(
+        (c: any) => c.name.toLowerCase().includes(searchTerm.toLowerCase()) || (c.phone && c.phone.includes(searchTerm)),
+    );
+    const localTotal = filteredLocal.length;
+    const localPages = Math.ceil(localTotal / limit) || 1;
+    const paginatedLocal = filteredLocal.slice((page - 1) * limit, page * limit);
+
     // Determine which customers to display
     const displayCustomers = customerDataMigrated 
-        ? serverCustomers.map((c: any) => ({ ...c, phone: c.phone_number, id: c.id })) 
-        : localCustomers;
+        ? serverItems.map((c) => ({ ...c, phone: c.phone_number, id: c.id })) 
+        : paginatedLocal;
+
+    const totalPages = customerDataMigrated ? serverMeta.total_pages : localPages;
+    const totalItems = customerDataMigrated ? serverMeta.total_items : localTotal;
 
     // TanStack Mutation: Bulk Migrate
     const migrateMutation = useMutation({
@@ -265,9 +281,7 @@ export default function Customers() {
         };
     };
 
-    const filteredCustomers = displayCustomers.filter(
-        (c: any) => c.name.toLowerCase().includes(searchTerm.toLowerCase()) || (c.phone && c.phone.includes(searchTerm)),
-    );
+    const filteredCustomers = displayCustomers;
 
     return (
         <Layout>
@@ -308,7 +322,10 @@ export default function Customers() {
                             <Input
                                 placeholder="Search by name or phone..."
                                 value={searchTerm}
-                                onChange={e => setSearchTerm(e.target.value)}
+                                onChange={e => {
+                                    setSearchTerm(e.target.value);
+                                    setPage(1);
+                                }}
                                 className="pl-9 h-11"
                             />
                         </div>
@@ -401,6 +418,15 @@ export default function Customers() {
                         })
                     )}
                 </div>
+
+                <Pagination
+                    currentPage={page}
+                    totalPages={totalPages}
+                    totalItems={totalItems}
+                    pageSize={limit}
+                    onPageChange={setPage}
+                    isLoading={isLoadingCustomers}
+                />
 
                 <ConfirmDeleteDialog
                     isOpen={isDeleteDialogOpen}

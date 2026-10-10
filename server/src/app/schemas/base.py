@@ -13,7 +13,15 @@ class BaseResponse(BaseModel, Generic[T]):
     data: T | None = Field(default=None, description="The payload of the response")
 
 
-# class ErrorResponse(BaseModel):
-#     success: bool = False
-#     message: str
-#     errors: list[Any] | None = None
+class PaginationMeta(BaseModel):
+    page: int
+    limit: int
+    total_items: int
+    total_pages: int
+    has_next: bool
+    has_previous: bool
+
+
+class PaginatedData(BaseModel, Generic[T]):
+    items: list[T]
+    meta: PaginationMeta

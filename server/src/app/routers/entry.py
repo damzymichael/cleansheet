@@ -1,8 +1,9 @@
 import logging
-from fastapi import APIRouter, status, Depends, HTTPException
-from typing import Annotated, List
+import math
+from fastapi import APIRouter, status, Depends, HTTPException, Query
+from typing import Annotated, List, Optional
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
+from sqlalchemy import select, func, or_
 from sqlalchemy.orm import selectinload
 from app.core.database import get_db
 from app.schemas.base import BaseResponse
@@ -170,11 +171,15 @@ async def bulk_add_entries(
     "",
     status_code=status.HTTP_200_OK,
     response_model=BaseResponse,
-    description="Get all entries for the business",
+    description="Get all entries for the business with pagination",
 )
 async def get_entries(
     current_user: Annotated[CurrentUser, Depends(get_current_user)],
     db: Annotated[AsyncSession, Depends(get_db)],
+    page: int = Query(1, ge=1, description="Page number"),
+    limit: int = Query(10, ge=1, le=100, description="Items per page"),
+    status: Optional[str] = Query(None, description="Filter by status (paid, unpaid)"),
+    search: Optional[str] = Query(None, description="Search by customer name"),
 ):
     result = await db.execute(select(models.User).where(models.User.id == current_user.user_id))
     user = result.scalars().first()
@@ -184,16 +189,41 @@ async def get_entries(
             detail="User or business not found"
         )
 
+    base_conditions = [models.Customer.business_id == user.business_id]
+    if status == "paid":
+        base_conditions.append(models.Entry.paid == True)
+    elif status == "unpaid":
+        base_conditions.append(models.Entry.paid == False)
+
+    if search and search.strip():
+        term = f"%{search.strip()}%"
+        base_conditions.append(models.Customer.name.ilike(term))
+
+    count_stmt = (
+        select(func.count(models.Entry.id))
+        .join(models.Customer)
+        .where(*base_conditions)
+    )
+    total_items = (await db.execute(count_stmt)).scalar() or 0
+    total_pages = math.ceil(total_items / limit) if total_items > 0 else 1
+
+    offset = (page - 1) * limit
     stmt = (
         select(models.Entry)
         .join(models.Customer)
-        .where(models.Customer.business_id == user.business_id)
+        .where(*base_conditions)
         .options(
             selectinload(models.Entry.customer),
             selectinload(models.Entry.entry_items).selectinload(
                 models.EntryItem.item),
         )
-        .order_by(models.Entry.created_at.desc())
+        .order_by(
+            models.Entry.created_at.desc(),
+            models.Entry.id_in_browser.desc().nullslast(),
+            models.Entry.id.desc(),
+        )
+        .offset(offset)
+        .limit(limit)
     )
     entries_result = await db.execute(stmt)
     entries = entries_result.scalars().all()
@@ -243,4 +273,17 @@ async def get_entries(
             "created_at": entry.created_at.isoformat() if entry.created_at else None,
         })
 
-    return BaseResponse(message="Entries retrieved successfully", data=formatted_entries)
+    return BaseResponse(
+        message="Entries retrieved successfully",
+        data={
+            "items": formatted_entries,
+            "meta": {
+                "page": page,
+                "limit": limit,
+                "total_items": total_items,
+                "total_pages": total_pages,
+                "has_next": page < total_pages,
+                "has_previous": page > 1,
+            },
+        },
+    )

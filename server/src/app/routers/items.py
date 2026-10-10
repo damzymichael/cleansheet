@@ -1,7 +1,8 @@
-from fastapi import APIRouter, status, Depends, HTTPException
-from typing import Annotated, List
+import math
+from fastapi import APIRouter, status, Depends, HTTPException, Query
+from typing import Annotated, List, Optional
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
+from sqlalchemy import select, func
 from app.core.database import get_db
 from app.schemas.base import BaseResponse
 from app.schemas.items import ItemCreate
@@ -80,21 +81,35 @@ async def add_item(
 @router.get(
     "",
     status_code=status.HTTP_200_OK,
-    description="Get all items",
+    description="Get all items with pagination",
 )
 async def get_items(
     current_user: Annotated[CurrentUser, Depends(get_current_user)],
     db: Annotated[AsyncSession, Depends(get_db)],
+    page: int = Query(1, ge=1, description="Page number"),
+    limit: int = Query(12, ge=1, le=100, description="Items per page"),
+    search: Optional[str] = Query(None, description="Search term for item name"),
 ):
     result = await db.execute(select(models.User).where(models.User.id == current_user.user_id))
     user = result.scalars().first()
     if not user or not user.business_id:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User or business not found")
 
+    base_conditions = [models.Item.business_id == user.business_id]
+    if search and search.strip():
+        base_conditions.append(models.Item.name.ilike(f"%{search.strip()}%"))
+
+    count_stmt = select(func.count(models.Item.id)).where(*base_conditions)
+    total_items = (await db.execute(count_stmt)).scalar() or 0
+    total_pages = math.ceil(total_items / limit) if total_items > 0 else 1
+
+    offset = (page - 1) * limit
     items_stmt = (
         select(models.Item)
-        .where(models.Item.business_id == user.business_id)
+        .where(*base_conditions)
         .order_by(models.Item.created_at.desc())
+        .offset(offset)
+        .limit(limit)
     )
     items_result = await db.execute(items_stmt)
     rows = items_result.scalars().all()
@@ -110,7 +125,20 @@ async def get_items(
         for row in rows
     ]
 
-    return BaseResponse(message="Items retrieved successfully", data=items)
+    return BaseResponse(
+        message="Items retrieved successfully",
+        data={
+            "items": items,
+            "meta": {
+                "page": page,
+                "limit": limit,
+                "total_items": total_items,
+                "total_pages": total_pages,
+                "has_next": page < total_pages,
+                "has_previous": page > 1,
+            },
+        },
+    )
 
 @router.put(
     "/{item_id}",

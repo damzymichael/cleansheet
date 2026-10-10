@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { Plus, Trash2, Edit2, UploadCloud } from "lucide-react";
+import { Plus, Trash2, Edit2, UploadCloud, Search } from "lucide-react";
+import { Pagination } from "@/components/pagination";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -8,7 +9,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import Layout from "@/components/layout";
 import { ConfirmDeleteDialog } from "@/components/confirm-delete-dialog";
 import { useStore } from "@/store/useStore";
-import type { Cloth } from "@/lib/types";
+import type { Cloth, ApiResponse, PaginatedData, ServerItem } from "@/lib/types";
 import { toast } from "sonner";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/axios";
@@ -26,18 +27,6 @@ const clothSchema = z.object({
 
 type ClothFormValues = z.infer<typeof clothSchema>;
 
-type ItemsData = {
-    success: boolean;
-    message: string;
-    data: {
-        id: string;
-        name: string;
-        wash_price: number;
-        iron_price: number;
-        starch_price: number;
-    }[];
-};
-
 export default function Clothes() {
     const queryClient = useQueryClient();
     const { 
@@ -50,6 +39,9 @@ export default function Clothes() {
     
     const [showDialog, setShowDialog] = useState(false);
     const [editingId, setEditingId] = useState<string | number | null>(null);
+    const [searchTerm, setSearchTerm] = useState("");
+    const [page, setPage] = useState(1);
+    const limit = 12;
 
     // Delete Confirmation Logic
     const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
@@ -72,31 +64,58 @@ export default function Clothes() {
     });
 
     // TanStack Query: Fetch Clothes (Items)
-    const { data: serverClothes = [], isLoading: isLoadingClothes } = useQuery({
-        queryKey: ["items"],
+    const { data: serverClothesResponse, isLoading: isLoadingClothes } = useQuery<PaginatedData<ServerItem>>({
+        queryKey: ["items", page, searchTerm],
         queryFn: async () => {
-            const { data } = await api.get<ItemsData>("/items");
+            const { data } = await api.get<ApiResponse<PaginatedData<ServerItem>>>("/items", {
+                params: {
+                    page,
+                    limit,
+                    search: searchTerm || undefined,
+                },
+            });
             return data.data;
         },
         enabled: clothesMigrated, // Only fetch from server if migrated
     });
 
+    const serverItems = serverClothesResponse?.items || [];
+
+    const serverMeta = serverClothesResponse?.meta || {
+        page: 1,
+        limit,
+        total_items: serverItems.length,
+        total_pages: Math.ceil(serverItems.length / limit) || 1,
+        has_next: false,
+        has_previous: false,
+    };
+
+    const filteredLocal = localClothes.filter(c =>
+        c.name.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+    const localTotal = filteredLocal.length;
+    const localPages = Math.ceil(localTotal / limit) || 1;
+    const paginatedLocal = filteredLocal.slice((page - 1) * limit, page * limit);
+
     // Determine which clothes to display
     const displayClothes = clothesMigrated 
-        ? serverClothes.map((c: any) => ({
+        ? serverItems.map((c) => ({
             id: c.id,
             name: c.name,
             washPrice: c.wash_price,
             ironingPrice: c.iron_price,
             starchPrice: c.starch_price
         })) 
-        : localClothes.map(c => ({
+        : paginatedLocal.map(c => ({
             id: c.id,
             name: c.name,
             washPrice: c.washPrice ?? c.price ?? 0,
             ironingPrice: c.ironingPrice ?? 0,
             starchPrice: c.starchPrice ?? 0,
         }));
+
+    const totalPages = clothesMigrated ? serverMeta.total_pages : localPages;
+    const totalItems = clothesMigrated ? serverMeta.total_items : localTotal;
 
     // TanStack Mutation: Bulk Migrate
     const migrateMutation = useMutation({
@@ -312,6 +331,20 @@ export default function Clothes() {
                     </div>
                 </div>
 
+                {/* Search Bar */}
+                <div className="relative font-sans max-w-md">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <Input
+                        placeholder="Search clothes..."
+                        value={searchTerm}
+                        onChange={e => {
+                            setSearchTerm(e.target.value);
+                            setPage(1);
+                        }}
+                        className="pl-9 h-11"
+                    />
+                </div>
+
                 {/* Grid of Clothes */}
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 font-sans">
                     {isLoadingClothes && clothesMigrated ? (
@@ -374,6 +407,15 @@ export default function Clothes() {
                         ))
                     )}
                 </div>
+
+                <Pagination
+                    currentPage={page}
+                    totalPages={totalPages}
+                    totalItems={totalItems}
+                    pageSize={limit}
+                    onPageChange={setPage}
+                    isLoading={isLoadingClothes}
+                />
 
                 <ConfirmDeleteDialog
                     isOpen={isDeleteDialogOpen}

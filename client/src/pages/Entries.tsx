@@ -9,11 +9,12 @@ import Layout from "@/components/layout";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ConfirmDeleteDialog } from "@/components/confirm-delete-dialog";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Pagination } from "@/components/pagination";
 import { getInvoice, deleteInvoice, saveInvoice } from "@/lib/db";
 import { generateInvoice } from "@/lib/invoice";
 import { toast } from "sonner";
 import { useStore } from "@/store/useStore";
-import type { Entry } from "@/lib/types";
+import type { Entry, ApiResponse, PaginatedData, ServerEntry } from "@/lib/types";
 import * as Sentry from "@sentry/react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/axios";
@@ -31,43 +32,87 @@ export default function Entries() {
     } = useStore();
     const [filterStatus, setFilterStatus] = useState("all");
     const [searchTerm, setSearchTerm] = useState("");
+    const [page, setPage] = useState(1);
+    const limit = 10;
 
     // TanStack Query: Fetch Entries
-    const { data: serverEntries = [], isLoading: isLoadingEntries } = useQuery({
-        queryKey: ["entries"],
+    const { data: serverEntriesResponse, isLoading: isLoadingEntries } = useQuery<PaginatedData<ServerEntry>>({
+        queryKey: ["entries", page, searchTerm, filterStatus],
         queryFn: async () => {
-            const { data } = await api.get<{ data: any[]; message: string; success: boolean }>("/entries");
+            const { data } = await api.get<ApiResponse<PaginatedData<ServerEntry>>>("/entries", {
+                params: {
+                    page,
+                    limit,
+                    status: filterStatus === "all" ? undefined : filterStatus,
+                    search: searchTerm || undefined,
+                },
+            });
             return data.data;
         },
         enabled: entriesMigrated,
     });
 
+    const serverItems = serverEntriesResponse?.items || [];
+
+    const serverMeta = serverEntriesResponse?.meta || {
+        page: 1,
+        limit,
+        total_items: serverItems.length,
+        total_pages: Math.ceil(serverItems.length / limit) || 1,
+        has_next: false,
+        has_previous: false,
+    };
+
+    // Format server entries to frontend Entry shape
+    const formattedServerEntries: Entry[] = serverItems.map((e) => ({
+        id: e.id,
+        id_in_browser: e.id_in_browser,
+        customerName: e.customer_name,
+        customerId: e.customer_id,
+        items: (e.items || []).map((item) => ({
+            id: item.id,
+            clothId: item.item_id,
+            clothName: item.cloth_name,
+            quantity: item.quantity,
+            price: item.price,
+            wash: item.wash,
+            iron: item.iron,
+            starch: item.starch,
+        })),
+        dueDate: e.due_date || e.created_at || "",
+        isPaid: e.paid,
+        price: e.price,
+        createdAt: e.created_at || "",
+        serviceType: (e.collection_mode || "pickup").toLowerCase() as "pickup" | "delivery",
+        deliveryFee: e.delivery_fee,
+        discount: e.discount_price,
+    }));
+
+    // Local filtering and pagination fallback (newest first)
+    const sortedLocal = [...localEntries].sort((a, b) => {
+        const timeA = a.createdAt ? new Date(a.createdAt).getTime() : (typeof a.id === "number" ? a.id : 0);
+        const timeB = b.createdAt ? new Date(b.createdAt).getTime() : (typeof b.id === "number" ? b.id : 0);
+        return timeB - timeA;
+    });
+
+    const filteredLocal = sortedLocal.filter(entry => {
+        const matchesStatus =
+            filterStatus === "all" ||
+            (filterStatus === "paid" && entry.isPaid) ||
+            (filterStatus === "unpaid" && !entry.isPaid);
+        const matchesSearch =
+            entry.customerName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            entry.items.some(item => item.clothName.toLowerCase().includes(searchTerm.toLowerCase()));
+        return matchesStatus && matchesSearch;
+    });
+    const localTotal = filteredLocal.length;
+    const localPages = Math.ceil(localTotal / limit) || 1;
+    const paginatedLocal = filteredLocal.slice((page - 1) * limit, page * limit);
+
     // Determine which entries to display
-    const displayEntries: Entry[] = entriesMigrated
-        ? serverEntries.map((e: any) => ({
-            id: e.id,
-            id_in_browser: e.id_in_browser,
-            customerName: e.customer_name,
-            customerId: e.customer_id,
-            items: (e.items || []).map((item: any) => ({
-                id: item.id,
-                clothId: item.item_id,
-                clothName: item.cloth_name,
-                quantity: item.quantity,
-                price: item.price,
-                wash: item.wash,
-                iron: item.iron,
-                starch: item.starch,
-            })),
-            dueDate: e.due_date || e.created_at,
-            isPaid: e.paid,
-            price: e.price,
-            createdAt: e.created_at,
-            serviceType: (e.collection_mode || "pickup").toLowerCase() as "pickup" | "delivery",
-            deliveryFee: e.delivery_fee,
-            discount: e.discount_price,
-        }))
-        : localEntries;
+    const displayEntries: Entry[] = entriesMigrated ? formattedServerEntries : paginatedLocal;
+    const totalPages = entriesMigrated ? serverMeta.total_pages : localPages;
+    const totalItems = entriesMigrated ? serverMeta.total_items : localTotal;
 
     // TanStack Mutation: Bulk Migrate Entries
     const migrateMutation = useMutation({
@@ -89,7 +134,9 @@ export default function Entries() {
                 discount_price: entry.discount || 0,
                 paid: entry.isPaid || false,
                 id_in_browser: typeof entry.id === "number" ? entry.id : null,
-                created_at: entry.createdAt ? new Date(entry.createdAt).toISOString() : null,
+                created_at: entry.createdAt
+                    ? new Date(entry.createdAt).toISOString()
+                    : (typeof entry.id === "number" && entry.id > 1000000000000 ? new Date(entry.id).toISOString() : null),
             }));
             const { data } = await api.post("/entries/bulk", payload);
             return data;
@@ -308,14 +355,23 @@ export default function Entries() {
                             <Input
                                 placeholder="Search by customer name..."
                                 value={searchTerm}
-                                onChange={e => setSearchTerm(e.target.value)}
+                                onChange={e => {
+                                    setSearchTerm(e.target.value);
+                                    setPage(1);
+                                }}
                                 className="pl-9 h-11"
                             />
                         </div>
                     </div>
                     <div className="w-full sm:w-48">
                         <label className="text-sm font-medium mb-1.5 block text-foreground/80">Status</label>
-                        <Select value={filterStatus} onValueChange={value => setFilterStatus(value ?? "all")}>
+                        <Select
+                            value={filterStatus}
+                            onValueChange={value => {
+                                setFilterStatus(value ?? "all");
+                                setPage(1);
+                            }}
+                        >
                             <SelectTrigger className="w-full h-11">
                                 <SelectValue />
                             </SelectTrigger>
@@ -333,7 +389,7 @@ export default function Entries() {
                     <CardHeader className="border-b pb-4">
                         <CardTitle className="text-xl">Active Entries</CardTitle>
                         <CardDescription>
-                            {filteredEntries.length} items currently in processing or completed.
+                            {totalItems} items currently in processing or completed.
                         </CardDescription>
                     </CardHeader>
                     <CardContent className="pt-6 font-sans">
@@ -342,7 +398,7 @@ export default function Entries() {
                                 <Loader2 className="w-8 h-8 animate-spin text-primary" />
                                 <p className="text-lg">Loading entries...</p>
                             </div>
-                        ) : filteredEntries.length === 0 ? (
+                        ) : displayEntries.length === 0 ? (
                             <div className="text-center py-12 text-muted-foreground border-2 border-dashed rounded-lg">
                                 <p className="text-lg">No entries found matching your criteria</p>
                                 <Button
@@ -350,6 +406,7 @@ export default function Entries() {
                                     onClick={() => {
                                         setSearchTerm("");
                                         setFilterStatus("all");
+                                        setPage(1);
                                     }}
                                     className="mt-2 text-primary"
                                 >
@@ -358,7 +415,7 @@ export default function Entries() {
                             </div>
                         ) : (
                             <div className="grid gap-4">
-                                {filteredEntries.map(entry => (
+                                {displayEntries.map(entry => (
                                     <div
                                         key={entry.id}
                                         className="flex flex-col sm:flex-row sm:items-center justify-between p-5 border rounded-xl hover:border-primary/50 hover:bg-muted/30 transition-all duration-200 gap-4 group"
@@ -468,6 +525,17 @@ export default function Entries() {
                                 ))}
                             </div>
                         )}
+
+                        <div className="pt-6">
+                            <Pagination
+                                currentPage={page}
+                                totalPages={totalPages}
+                                totalItems={totalItems}
+                                pageSize={limit}
+                                onPageChange={setPage}
+                                isLoading={isLoadingEntries && entriesMigrated}
+                            />
+                        </div>
                     </CardContent>
                 </Card>
                 <ConfirmDeleteDialog
