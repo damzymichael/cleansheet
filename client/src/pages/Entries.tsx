@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Plus, Trash2, Search, Share2, Check, Loader2, UploadCloud } from "lucide-react";
+import { Plus, Trash2, Search, Share2, Check, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -22,14 +22,7 @@ import { api } from "@/lib/axios";
 export default function Entries() {
     const navigate = useNavigate();
     const queryClient = useQueryClient();
-    const {
-        entries: localEntries,
-        entriesMigrated,
-        setEntriesMigrated,
-        updateEntry,
-        deleteEntry,
-        settings,
-    } = useStore();
+    const { settings } = useStore();
     const [filterStatus, setFilterStatus] = useState("all");
     const [searchTerm, setSearchTerm] = useState("");
     const [page, setPage] = useState(1);
@@ -49,7 +42,6 @@ export default function Entries() {
             });
             return data.data;
         },
-        enabled: entriesMigrated,
     });
 
     const serverItems = serverEntriesResponse?.items || [];
@@ -69,6 +61,8 @@ export default function Entries() {
         id_in_browser: e.id_in_browser,
         customerName: e.customer_name,
         customerId: e.customer_id,
+        customerPhone: e.customer_phone || undefined,
+        customerAddress: e.customer_address || undefined,
         items: (e.items || []).map((item) => ({
             id: item.id,
             clothId: item.item_id,
@@ -88,74 +82,42 @@ export default function Entries() {
         discount: e.discount_price,
     }));
 
-    // Local filtering and pagination fallback (newest first)
-    const sortedLocal = [...localEntries].sort((a, b) => {
-        const timeA = a.createdAt ? new Date(a.createdAt).getTime() : (typeof a.id === "number" ? a.id : 0);
-        const timeB = b.createdAt ? new Date(b.createdAt).getTime() : (typeof b.id === "number" ? b.id : 0);
-        return timeB - timeA;
-    });
-
-    const filteredLocal = sortedLocal.filter(entry => {
-        const matchesStatus =
-            filterStatus === "all" ||
-            (filterStatus === "paid" && entry.isPaid) ||
-            (filterStatus === "unpaid" && !entry.isPaid);
-        const matchesSearch =
-            entry.customerName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            entry.items.some(item => item.clothName.toLowerCase().includes(searchTerm.toLowerCase()));
-        return matchesStatus && matchesSearch;
-    });
-    const localTotal = filteredLocal.length;
-    const localPages = Math.ceil(localTotal / limit) || 1;
-    const paginatedLocal = filteredLocal.slice((page - 1) * limit, page * limit);
-
     // Determine which entries to display
-    const displayEntries: Entry[] = entriesMigrated ? formattedServerEntries : paginatedLocal;
-    const totalPages = entriesMigrated ? serverMeta.total_pages : localPages;
-    const totalItems = entriesMigrated ? serverMeta.total_items : localTotal;
+    const displayEntries: Entry[] = formattedServerEntries;
+    const totalPages = serverMeta.total_pages;
+    const totalItems = serverMeta.total_items;
 
-    // TanStack Mutation: Bulk Migrate Entries
-    const migrateMutation = useMutation({
-        mutationFn: async (entriesToMigrate: Entry[]) => {
-            const payload = entriesToMigrate.map(entry => ({
-                customer_name: entry.customerName,
-                items: entry.items.map(item => ({
-                    cloth_id: item.clothId,
-                    cloth_name: item.clothName,
-                    quantity: item.quantity,
-                    wash: true, // tick only wash for every entry item
-                    iron: false,
-                    starch: false,
-                    price: item.price,
-                })),
-                due_date: entry.dueDate ? new Date(entry.dueDate).toISOString() : null,
-                collection_mode: (entry.serviceType || "pickup").toLowerCase(),
-                delivery_fee: entry.deliveryFee || 0,
-                discount_price: entry.discount || 0,
-                paid: entry.isPaid || false,
-                id_in_browser: typeof entry.id === "number" ? entry.id : null,
-                created_at: entry.createdAt
-                    ? new Date(entry.createdAt).toISOString()
-                    : (typeof entry.id === "number" && entry.id > 1000000000000 ? new Date(entry.id).toISOString() : null),
-            }));
-            const { data } = await api.post("/entries/bulk", payload);
+    // Delete Entry Mutation
+    const deleteEntryMutation = useMutation({
+        mutationFn: async (id: string | number) => {
+            const { data } = await api.delete(`/entries/${id}`);
             return data;
         },
         onSuccess: () => {
-            setEntriesMigrated(true);
             queryClient.invalidateQueries({ queryKey: ["entries"] });
-            toast.success("Entries data migrated successfully!");
+            toast.success("Entry deleted");
         },
         onError: (error: any) => {
-            console.error("Entries migration error:", error);
-            const message = error.response?.data?.message || "Failed to migrate entries data";
-            toast.error(message);
+            console.error("Delete entry error:", error);
+            toast.error(error.response?.data?.detail || error.response?.data?.message || "Failed to delete entry");
         },
     });
 
-    const handleMigrateClick = () => {
-        migrateMutation.mutate(localEntries);
-    };
+    // Mark as Paid Mutation
+    const markAsPaidMutation = useMutation({
+        mutationFn: async (id: string | number) => {
+            const { data } = await api.patch(`/entries/${id}/status`, { paid: true });
+            return data;
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ["entries"] });
+            toast.success("Entry marked as paid");
+        },
+        onError: (error: any) => {
+            console.error("Mark as paid error:", error);
+            toast.error(error.response?.data?.detail || error.response?.data?.message || "Failed to update entry");
+        },
+    });
 
     // Delete Confirmation Logic
     const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
@@ -183,13 +145,11 @@ export default function Entries() {
 
     const confirmDelete = async () => {
         if (entryToDelete !== null) {
-            deleteEntry(entryToDelete);
-            // Also cleanup PDF if it exists
+            deleteEntryMutation.mutate(entryToDelete);
             await deleteInvoice(entryToDelete);
 
             setIsDeleteDialogOpen(false);
             setEntryToDelete(null);
-            toast.success("Entry deleted");
         }
     };
 
@@ -201,13 +161,10 @@ export default function Entries() {
     const confirmMarkAsPaid = async () => {
         if (!entryToMarkAsPaid) return;
 
-        updateEntry(entryToMarkAsPaid.id, { isPaid: true });
-
-        // Delete PDF once paid
+        markAsPaidMutation.mutate(entryToMarkAsPaid.id);
         await deleteInvoice(entryToMarkAsPaid.id);
         setIsPaidDialogOpen(false);
         setEntryToMarkAsPaid(null);
-        toast.success("Entry marked as paid");
     };
 
     const handleOpenShare = async (entry: Entry) => {
@@ -256,8 +213,8 @@ export default function Entries() {
                 organizationName: settings.orgName,
                 businessPhone: settings.phone,
                 businessAddress: settings.address,
-                customerPhone: customer?.phone,
-                customerAddress: customer?.address,
+                customerPhone: sharingEntry.customerPhone || customer?.phone,
+                customerAddress: sharingEntry.customerAddress || customer?.address,
                 bankDetails: {
                     bankName: settings.bankName,
                     accountNumber: settings.bankAccount,
@@ -328,17 +285,6 @@ export default function Entries() {
                         </p>
                     </div>
                     <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
-                        {!entriesMigrated && (
-                            <Button
-                                onClick={handleMigrateClick}
-                                variant="outline"
-                                className="border-primary text-primary hover:bg-primary/10 gap-2 h-11"
-                                disabled={migrateMutation.isPending || localEntries.length === 0}
-                            >
-                                <UploadCloud className="h-4 w-4" />
-                                {migrateMutation.isPending ? "Migrating..." : "Migrate Data"}
-                            </Button>
-                        )}
                         <Button onClick={() => navigate("/entries/new")} className="gap-2 w-full sm:w-auto" size="lg">
                             <Plus className="w-5 h-5" />
                             New Entry
@@ -393,7 +339,7 @@ export default function Entries() {
                         </CardDescription>
                     </CardHeader>
                     <CardContent className="pt-6 font-sans">
-                        {isLoadingEntries && entriesMigrated ? (
+                        {isLoadingEntries ? (
                             <div className="flex flex-col items-center justify-center py-12 gap-3 text-muted-foreground">
                                 <Loader2 className="w-8 h-8 animate-spin text-primary" />
                                 <p className="text-lg">Loading entries...</p>
@@ -533,7 +479,7 @@ export default function Entries() {
                                 totalItems={totalItems}
                                 pageSize={limit}
                                 onPageChange={setPage}
-                                isLoading={isLoadingEntries && entriesMigrated}
+                                isLoading={isLoadingEntries}
                             />
                         </div>
                     </CardContent>

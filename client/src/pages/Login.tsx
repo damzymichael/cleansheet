@@ -39,7 +39,6 @@ function Login() {
             return response.data;
         },
         onSuccess: data => {
-            console.log(data);
             toast.success(data.message || "Login successful");
             login(); // Update auth state
             if (!data.data.has_business) {

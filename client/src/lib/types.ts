@@ -31,6 +31,8 @@ export interface Entry {
     id_in_browser?: number | null;
     customerName: string;
     customerId?: string;
+    customerPhone?: string;
+    customerAddress?: string;
     items: EntryItem[];
     dueDate: string;
     isPaid: boolean;
@@ -104,6 +106,8 @@ export interface ServerEntry {
     id: string;
     customer_name: string;
     customer_id: string;
+    customer_phone?: string | null;
+    customer_address?: string | null;
     items: ServerEntryItem[];
     due_date: string | null;
     collection_mode: string;

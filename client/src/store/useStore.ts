@@ -42,9 +42,9 @@ export const useStore = create<AppState>()(
             customers: [],
             clothes: [],
             businessUpdated: true, // assume true until we check
-            customerDataMigrated: false, // default to false
-            clothesMigrated: false,
-            entriesMigrated: false,
+            customerDataMigrated: true,
+            clothesMigrated: true,
+            entriesMigrated: true,
             settings: {
                 orgName: "",
                 phone: "",

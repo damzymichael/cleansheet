@@ -8,7 +8,15 @@ import { format } from "date-fns";
 import { ChevronDownIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-export function DatePicker({ date, setDate }: { date?: Date; setDate: (date?: Date) => void }) {
+export function DatePicker({
+    date,
+    setDate,
+    disabled,
+}: {
+    date?: Date;
+    setDate: (date?: Date) => void;
+    disabled?: (date: Date) => boolean;
+}) {
     return (
         <Popover>
             <PopoverTrigger className="w-full">
@@ -23,7 +31,7 @@ export function DatePicker({ date, setDate }: { date?: Date; setDate: (date?: Da
                 </Button>
             </PopoverTrigger>
             <PopoverContent className="w-auto p-0" align="start">
-                <Calendar mode="single" selected={date} onSelect={setDate} />
+                <Calendar mode="single" selected={date} onSelect={setDate} disabled={disabled} />
             </PopoverContent>
         </Popover>
     );

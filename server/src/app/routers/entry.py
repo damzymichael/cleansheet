@@ -7,7 +7,7 @@ from sqlalchemy import select, func, or_
 from sqlalchemy.orm import selectinload
 from app.core.database import get_db
 from app.schemas.base import BaseResponse
-from app.schemas.entry import EntryCreate, EntryResponse
+from app.schemas.entry import EntryCreate, EntryResponse, EntryUpdatePaid
 from app import models
 from app.core.auth import CurrentUser, get_current_user
 
@@ -165,6 +165,125 @@ async def bulk_add_entries(
         raise HTTPException(status_code=400, detail=str(e))
 
     return BaseResponse(message="Entries migrated successfully")
+@router.post(
+    "",
+    status_code=status.HTTP_201_CREATED,
+    response_model=BaseResponse,
+    description="Create a new entry",
+)
+async def create_entry(
+    entry_data: EntryCreate,
+    current_user: Annotated[CurrentUser, Depends(get_current_user)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+):
+    result = await db.execute(select(models.User).where(models.User.id == current_user.user_id))
+    user = result.scalars().first()
+    if not user or not user.business_id:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User or business not found"
+        )
+
+    # 1. Resolve Customer: first by customer_id if valid UUID, otherwise by name
+    customer = None
+    if entry_data.customer_id:
+        try:
+            import uuid
+            cust_uuid = uuid.UUID(entry_data.customer_id)
+            cust_res = await db.execute(
+                select(models.Customer).where(
+                    models.Customer.id == cust_uuid,
+                    models.Customer.business_id == user.business_id,
+                )
+            )
+            customer = cust_res.scalars().first()
+        except ValueError:
+            pass
+
+    if not customer:
+        cust_name = entry_data.customer_name.strip().lower()
+        cust_res = await db.execute(
+            select(models.Customer).where(
+                models.Customer.business_id == user.business_id,
+                func.lower(models.Customer.name) == cust_name,
+            )
+        )
+        customer = cust_res.scalars().first()
+
+    if not customer:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Customer '{entry_data.customer_name}' not found. Please select an existing customer."
+        )
+
+    # 2. Create Entry
+    new_entry = models.Entry(
+        collection_mode=entry_data.collection_mode,
+        discount_price=entry_data.discount_price,
+        delivery_fee=entry_data.delivery_fee,
+        paid=entry_data.paid,
+        customer_id=customer.id,
+        due_date=entry_data.due_date,
+        id_in_browser=entry_data.id_in_browser,
+    )
+    if entry_data.created_at:
+        new_entry.created_at = entry_data.created_at
+
+    db.add(new_entry)
+    await db.flush()
+
+    # 3. Add Entry Items
+    for item_data in entry_data.items:
+        item = None
+        if item_data.cloth_id:
+            try:
+                import uuid
+                item_uuid = uuid.UUID(item_data.cloth_id)
+                item_res = await db.execute(
+                    select(models.Item).where(
+                        models.Item.id == item_uuid,
+                        models.Item.business_id == user.business_id,
+                    )
+                )
+                item = item_res.scalars().first()
+            except ValueError:
+                pass
+
+        if not item:
+            item_res = await db.execute(
+                select(models.Item).where(
+                    models.Item.business_id == user.business_id,
+                    func.lower(models.Item.name) == item_data.cloth_name.strip().lower(),
+                )
+            )
+            item = item_res.scalars().first()
+
+        if not item:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Clothing item '{item_data.cloth_name}' not found."
+            )
+
+        new_entry_item = models.EntryItem(
+            entry_id=new_entry.id,
+            item_id=item.id,
+            quantity=item_data.quantity,
+            wash=item_data.wash,
+            iron=item_data.iron,
+            starch=item_data.starch,
+        )
+        db.add(new_entry_item)
+
+    try:
+        await db.commit()
+    except Exception as e:
+        await db.rollback()
+        raise HTTPException(status_code=400, detail=str(e))
+
+    return BaseResponse(
+        message="Entry created successfully",
+        data={"id": str(new_entry.id)}
+    )
 
 
 @router.get(
@@ -262,6 +381,8 @@ async def get_entries(
             "id": str(entry.id),
             "customer_name": entry.customer.name,
             "customer_id": str(entry.customer_id),
+            "customer_phone": entry.customer.phone_number,
+            "customer_address": entry.customer.address,
             "items": items_list,
             "due_date": entry.due_date.isoformat() if entry.due_date else None,
             "collection_mode": entry.collection_mode.value if hasattr(entry.collection_mode, "value") else str(entry.collection_mode),
@@ -287,3 +408,98 @@ async def get_entries(
             },
         },
     )
+
+
+@router.patch(
+    "/{entry_id}/status",
+    status_code=status.HTTP_200_OK,
+    response_model=BaseResponse,
+    description="Update an entry paid status",
+)
+async def update_entry_status(
+    entry_id: str,
+    paid_update: EntryUpdatePaid,
+    current_user: Annotated[CurrentUser, Depends(get_current_user)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+):
+    result = await db.execute(select(models.User).where(models.User.id == current_user.user_id))
+    user = result.scalars().first()
+    if not user or not user.business_id:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User or business not found"
+        )
+
+    import uuid
+    try:
+        entry_uuid = uuid.UUID(entry_id)
+    except ValueError:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid entry ID")
+
+    entry_res = await db.execute(
+        select(models.Entry)
+        .join(models.Customer)
+        .where(
+            models.Entry.id == entry_uuid,
+            models.Customer.business_id == user.business_id,
+        )
+    )
+    entry = entry_res.scalars().first()
+    if not entry:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Entry not found")
+
+    entry.paid = paid_update.paid
+    try:
+        await db.commit()
+    except Exception as e:
+        await db.rollback()
+        raise HTTPException(status_code=400, detail=str(e))
+
+    return BaseResponse(message="Entry status updated successfully")
+
+
+@router.delete(
+    "/{entry_id}",
+    status_code=status.HTTP_200_OK,
+    response_model=BaseResponse,
+    description="Delete an entry",
+)
+async def delete_entry(
+    entry_id: str,
+    current_user: Annotated[CurrentUser, Depends(get_current_user)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+):
+    result = await db.execute(select(models.User).where(models.User.id == current_user.user_id))
+    user = result.scalars().first()
+    if not user or not user.business_id:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User or business not found"
+        )
+
+    import uuid
+    try:
+        entry_uuid = uuid.UUID(entry_id)
+    except ValueError:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid entry ID")
+
+    entry_res = await db.execute(
+        select(models.Entry)
+        .join(models.Customer)
+        .where(
+            models.Entry.id == entry_uuid,
+            models.Customer.business_id == user.business_id,
+        )
+    )
+    entry = entry_res.scalars().first()
+    if not entry:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Entry not found")
+
+    await db.delete(entry)
+    try:
+        await db.commit()
+    except Exception as e:
+        await db.rollback()
+        raise HTTPException(status_code=400, detail=str(e))
+
+    return BaseResponse(message="Entry deleted successfully")

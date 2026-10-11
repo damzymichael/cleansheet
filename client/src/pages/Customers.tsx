@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Plus, Trash2, Edit2, User, Phone, Search, ChevronRight, UploadCloud } from "lucide-react";
+import { Plus, Trash2, Edit2, User, Phone, Search, ChevronRight } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -32,15 +32,7 @@ type CustomerFormValues = z.infer<typeof customerSchema>;
 export default function Customers() {
     const navigate = useNavigate();
     const queryClient = useQueryClient();
-    const { 
-        customers: localCustomers, 
-        entries, 
-        addCustomer: addLocalCustomer, 
-        updateCustomer: updateLocalCustomer, 
-        deleteCustomer: deleteLocalCustomer, 
-        customerDataMigrated, 
-        setCustomerDataMigrated 
-    } = useStore();
+    const { entries } = useStore();
     
     const [showDialog, setShowDialog] = useState(false);
     const [editingId, setEditingId] = useState<string | number | null>(null);
@@ -80,7 +72,6 @@ export default function Customers() {
             });
             return data.data;
         },
-        enabled: customerDataMigrated, // Only fetch from server if migrated
     });
 
     const serverItems = serverCustomersResponse?.items || [];
@@ -94,43 +85,10 @@ export default function Customers() {
         has_previous: false,
     };
 
-    const filteredLocal = localCustomers.filter(
-        (c: any) => c.name.toLowerCase().includes(searchTerm.toLowerCase()) || (c.phone && c.phone.includes(searchTerm)),
-    );
-    const localTotal = filteredLocal.length;
-    const localPages = Math.ceil(localTotal / limit) || 1;
-    const paginatedLocal = filteredLocal.slice((page - 1) * limit, page * limit);
-
     // Determine which customers to display
-    const displayCustomers = customerDataMigrated 
-        ? serverItems.map((c) => ({ ...c, phone: c.phone_number, id: c.id })) 
-        : paginatedLocal;
-
-    const totalPages = customerDataMigrated ? serverMeta.total_pages : localPages;
-    const totalItems = customerDataMigrated ? serverMeta.total_items : localTotal;
-
-    // TanStack Mutation: Bulk Migrate
-    const migrateMutation = useMutation({
-        mutationFn: async (customersToMigrate: Customer[]) => {
-            const payload = customersToMigrate.map(c => ({
-                name: c.name,
-                phone_number: c.phone,
-                address: c.address,
-                id_in_browser: c.id
-            }));
-            const { data } = await api.post("/customers/bulk", payload);
-            return data;
-        },
-        onSuccess: () => {
-            setCustomerDataMigrated(true);
-            queryClient.invalidateQueries({ queryKey: ["customers"] });
-            toast.success("Data migrated successfully!");
-        },
-        onError: (error) => {
-            console.error("Migration error:", error);
-            toast.error("Failed to migrate data");
-        }
-    });
+    const displayCustomers = serverItems.map((c) => ({ ...c, phone: c.phone_number, id: c.id }));
+    const totalPages = serverMeta.total_pages;
+    const totalItems = serverMeta.total_items;
 
     // TanStack Mutation: Create Customer
     const createCustomerMutation = useMutation({
@@ -212,30 +170,11 @@ export default function Customers() {
     });
 
 
-    const handleMigrateClick = () => {
-        migrateMutation.mutate(localCustomers);
-    };
-
     const onSubmit = (data: CustomerFormValues) => {
-        if (customerDataMigrated) {
-            if (editingId) {
-                updateCustomerMutation.mutate({ id: editingId, data });
-            } else {
-                createCustomerMutation.mutate(data);
-            }
+        if (editingId) {
+            updateCustomerMutation.mutate({ id: editingId, data });
         } else {
-            // Local fallback
-            if (editingId) {
-                updateLocalCustomer(editingId as number, data);
-            } else {
-                const newCustomer: Customer = {
-                    id: Date.now(),
-                    ...data,
-                };
-                addLocalCustomer(newCustomer);
-            }
-            setShowDialog(false);
-            reset();
+            createCustomerMutation.mutate(data);
         }
     };
 
@@ -256,13 +195,7 @@ export default function Customers() {
 
     const confirmDelete = () => {
         if (customerToDelete !== null) {
-            if (customerDataMigrated) {
-                deleteCustomerMutation.mutate(customerToDelete);
-            } else {
-                deleteLocalCustomer(customerToDelete as number);
-                setIsDeleteDialogOpen(false);
-                setCustomerToDelete(null);
-            }
+            deleteCustomerMutation.mutate(customerToDelete);
         }
     };
 
@@ -295,18 +228,6 @@ export default function Customers() {
                         </p>
                     </div>
                     <div className="flex gap-2 w-full sm:w-auto">
-                        {!customerDataMigrated && (
-                            <Button 
-                                onClick={handleMigrateClick} 
-                                className="gap-2" 
-                                size="lg" 
-                                variant="outline"
-                                disabled={migrateMutation.isPending || localCustomers.length === 0}
-                            >
-                                <UploadCloud className="w-5 h-5" />
-                                {migrateMutation.isPending ? "Migrating..." : "Migrate Data"}
-                            </Button>
-                        )}
                         <Button onClick={handleNewClick} className="gap-2" size="lg">
                             <Plus className="w-5 h-5" />
                             Add Customer
@@ -334,7 +255,7 @@ export default function Customers() {
 
                 {/* Content Area */}
                 <div className="grid gap-4">
-                    {isLoadingCustomers && customerDataMigrated ? (
+                    {isLoadingCustomers ? (
                         <div className="text-center py-20 text-muted-foreground">
                             <p className="text-lg font-sans">Loading customers...</p>
                         </div>

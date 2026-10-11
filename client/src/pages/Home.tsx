@@ -5,11 +5,45 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import Layout from "@/components/layout";
 import { useNavigate } from "react-router-dom";
-import { useStore } from "@/store/useStore";
+import { useQuery } from "@tanstack/react-query";
+import { api } from "@/lib/axios";
+import type { ApiResponse, PaginatedData, ServerEntry } from "@/lib/types";
 
 export default function Home() {
     const navigate = useNavigate();
-    const { entries } = useStore();
+
+    const { data: serverEntriesResponse } = useQuery<PaginatedData<ServerEntry>>({
+        queryKey: ["entries", "dashboard"],
+        queryFn: async () => {
+            const { data } = await api.get<ApiResponse<PaginatedData<ServerEntry>>>("/entries", {
+                params: {
+                    limit: 50,
+                },
+            });
+            return data.data;
+        },
+    });
+
+    const entries = useMemo(() => {
+        if (!serverEntriesResponse?.items) return [];
+        return serverEntriesResponse.items.map((e) => ({
+            id: e.id,
+            customerName: e.customer_name,
+            items: e.items.map((i) => ({
+                id: i.id,
+                clothName: i.cloth_name,
+                quantity: i.quantity,
+                price: i.price,
+            })),
+            dueDate: e.due_date || e.created_at || "",
+            isPaid: e.paid,
+            price: e.price,
+            createdAt: e.created_at || "",
+            serviceType: (e.collection_mode || "pickup").toLowerCase() as "pickup" | "delivery",
+            deliveryFee: e.delivery_fee,
+            discount: e.discount_price,
+        }));
+    }, [serverEntriesResponse]);
 
     const stats = useMemo(() => {
         const today = new Date();

@@ -15,6 +15,7 @@ class EntryItemCreate(BaseModel):
 
 
 class EntryCreate(BaseModel):
+    customer_id: Optional[str] = None
     customer_name: str
     items: List[EntryItemCreate]
     due_date: Optional[datetime] = None
@@ -24,6 +25,9 @@ class EntryCreate(BaseModel):
     paid: bool = False
     id_in_browser: Optional[int] = None
     created_at: Optional[datetime] = None
+
+class EntryUpdatePaid(BaseModel):
+    paid: bool = True
 
 
 class EntryItemResponse(BaseModel):

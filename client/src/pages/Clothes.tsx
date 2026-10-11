@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Plus, Trash2, Edit2, UploadCloud, Search } from "lucide-react";
+import { Plus, Trash2, Edit2, Search } from "lucide-react";
 import { Pagination } from "@/components/pagination";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -20,7 +20,7 @@ import * as z from "zod";
 
 const clothSchema = z.object({
     name: z.string().min(2, "Name must be at least 2 characters").max(50, "Name must be at most 50 characters"),
-    washPrice: z.number({ message: "Must be a number" }).min(0, "Wash price cannot be negative"),
+    washPrice: z.number({ message: "Must be a number" }).gt(0, "Washing price must be greater than zero"),
     ironingPrice: z.number({ message: "Must be a number" }).min(0, "Ironing price cannot be negative"),
     starchPrice: z.number({ message: "Must be a number" }).min(0, "Starch price cannot be negative"),
 });
@@ -29,13 +29,7 @@ type ClothFormValues = z.infer<typeof clothSchema>;
 
 export default function Clothes() {
     const queryClient = useQueryClient();
-    const { 
-        clothes: localClothes, 
-        addCloth: addLocalCloth, 
-        updateCloth: updateLocalCloth, 
-        deleteCloth: deleteLocalCloth,
-        clothesMigrated
-    } = useStore();
+    // local storage state removed
     
     const [showDialog, setShowDialog] = useState(false);
     const [editingId, setEditingId] = useState<string | number | null>(null);
@@ -76,7 +70,6 @@ export default function Clothes() {
             });
             return data.data;
         },
-        enabled: clothesMigrated, // Only fetch from server if migrated
     });
 
     const serverItems = serverClothesResponse?.items || [];
@@ -90,58 +83,17 @@ export default function Clothes() {
         has_previous: false,
     };
 
-    const filteredLocal = localClothes.filter(c =>
-        c.name.toLowerCase().includes(searchTerm.toLowerCase())
-    );
-    const localTotal = filteredLocal.length;
-    const localPages = Math.ceil(localTotal / limit) || 1;
-    const paginatedLocal = filteredLocal.slice((page - 1) * limit, page * limit);
-
     // Determine which clothes to display
-    const displayClothes = clothesMigrated 
-        ? serverItems.map((c) => ({
-            id: c.id,
-            name: c.name,
-            washPrice: c.wash_price,
-            ironingPrice: c.iron_price,
-            starchPrice: c.starch_price
-        })) 
-        : paginatedLocal.map(c => ({
-            id: c.id,
-            name: c.name,
-            washPrice: c.washPrice ?? c.price ?? 0,
-            ironingPrice: c.ironingPrice ?? 0,
-            starchPrice: c.starchPrice ?? 0,
-        }));
+    const displayClothes = serverItems.map((c) => ({
+        id: c.id,
+        name: c.name,
+        washPrice: c.wash_price,
+        ironingPrice: c.iron_price,
+        starchPrice: c.starch_price
+    }));
 
-    const totalPages = clothesMigrated ? serverMeta.total_pages : localPages;
-    const totalItems = clothesMigrated ? serverMeta.total_items : localTotal;
-
-    // TanStack Mutation: Bulk Migrate
-    const migrateMutation = useMutation({
-        mutationFn: async (clothesToMigrate: any[]) => {
-            const payload = clothesToMigrate.map(c => ({
-                name: c.name,
-                wash_price: c.washPrice ?? c.price ?? 0,
-                iron_price: c.ironingPrice ?? 0,
-                starch_price: c.starchPrice ?? 0,
-                id_in_browser: typeof c.id === 'number' ? c.id : null
-            }));
-            const { data } = await api.post("/items/bulk", payload);
-            return data;
-        },
-        onSuccess: () => {
-            console.log("Success")
-            useStore.setState({ clothesMigrated: true });
-            queryClient.invalidateQueries({ queryKey: ["items"] });
-            toast.success("Clothes data migrated successfully!");
-            // Todo Update in local storage
-        },
-        onError: (error) => {
-            console.error("Migration error:", error);
-            toast.error("Failed to migrate clothes data");
-        }
-    });
+    const totalPages = serverMeta.total_pages;
+    const totalItems = serverMeta.total_items;
 
     // TanStack Mutation: Create Cloth (Item)
     const createClothMutation = useMutation({
@@ -224,10 +176,6 @@ export default function Clothes() {
         }
     });
 
-    const handleMigrateClick = () => {
-        migrateMutation.mutate(localClothes);
-    };
-
     const onSubmit: SubmitHandler<ClothFormValues> = (data) => {
         const existingCloth = displayClothes.find(
             (c: any) => c.name.toLowerCase() === data.name.toLowerCase().trim() && c.id !== editingId
@@ -238,33 +186,10 @@ export default function Clothes() {
             return;
         }
 
-        if (clothesMigrated) {
-            if (editingId) {
-                updateClothMutation.mutate({ id: editingId, data });
-            } else {
-                createClothMutation.mutate(data);
-            }
+        if (editingId) {
+            updateClothMutation.mutate({ id: editingId, data });
         } else {
-            // Local fallback
-            if (editingId) {
-                updateLocalCloth(editingId as number, {
-                    name: data.name.trim(),
-                    washPrice: data.washPrice,
-                    ironingPrice: data.ironingPrice,
-                    starchPrice: data.starchPrice,
-                });
-            } else {
-                const newCloth: Cloth = {
-                    id: Date.now(),
-                    name: data.name.trim(),
-                    washPrice: data.washPrice,
-                    ironingPrice: data.ironingPrice,
-                    starchPrice: data.starchPrice,
-                };
-                addLocalCloth(newCloth);
-            }
-            setShowDialog(false);
-            reset();
+            createClothMutation.mutate(data);
         }
     };
 
@@ -284,13 +209,7 @@ export default function Clothes() {
 
     const confirmDelete = () => {
         if (clothToDelete !== null) {
-            if (clothesMigrated) {
-                deleteClothMutation.mutate(clothToDelete);
-            } else {
-                deleteLocalCloth(clothToDelete as number);
-                setIsDeleteDialogOpen(false);
-                setClothToDelete(null);
-            }
+            deleteClothMutation.mutate(clothToDelete);
         }
     };
 
@@ -312,18 +231,6 @@ export default function Clothes() {
                         </p>
                     </div>
                     <div className="flex gap-2 w-full sm:w-auto">
-                        {!clothesMigrated && (
-                            <Button 
-                                onClick={handleMigrateClick} 
-                                className="gap-2 font-sans" 
-                                size="lg" 
-                                variant="outline"
-                                disabled={migrateMutation.isPending || localClothes.length === 0}
-                            >
-                                <UploadCloud className="w-5 h-5" />
-                                {migrateMutation.isPending ? "Migrating..." : "Migrate Data"}
-                            </Button>
-                        )}
                         <Button onClick={handleNewClick} className="gap-2 font-sans" size="lg">
                             <Plus className="w-5 h-5" />
                             Add Cloth Type
@@ -347,7 +254,7 @@ export default function Clothes() {
 
                 {/* Grid of Clothes */}
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 font-sans">
-                    {isLoadingClothes && clothesMigrated ? (
+                    {isLoadingClothes ? (
                         <div className="col-span-full text-center py-16 text-muted-foreground">
                             <p className="text-lg">Loading clothes...</p>
                         </div>

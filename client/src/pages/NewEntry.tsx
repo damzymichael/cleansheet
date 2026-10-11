@@ -8,11 +8,8 @@ import type { Entry } from "@/lib/types";
 
 export default function NewEntry() {
     const navigate = useNavigate();
-    const { addEntry } = useStore();
 
-    const handleAddEntry = (entry: Entry) => {
-        addEntry(entry);
-        toast.success("Entry added successfully");
+    const handleSuccess = () => {
         navigate("/entries");
     };
 
@@ -33,7 +30,7 @@ export default function NewEntry() {
                         </CardDescription>
                     </CardHeader>
                     <CardContent>
-                        <EntryForm onSubmit={handleAddEntry} onCancel={() => navigate(-1)} />
+                        <EntryForm onSubmitSuccess={handleSuccess} onCancel={() => navigate(-1)} />
                     </CardContent>
                 </Card>
             </div>
